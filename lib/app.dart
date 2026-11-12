@@ -11,7 +11,7 @@ class App extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = buildAppTheme();
     return MaterialApp(
-      title: 'App Pessoal',
+      title: 'All',
       debugShowCheckedModeBanner: false,
       theme: theme,
       darkTheme: theme,
