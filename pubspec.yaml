@@ -1,5 +1,5 @@
-name: app_pessoal
-description: "App pessoal de organização (somente Android)."
+name: aplicativo_all
+description: "All: organização pessoal em 21 módulos (somente Android, offline)."
 publish_to: 'none'
 
 version: 1.0.0+1

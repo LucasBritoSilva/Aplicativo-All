@@ -1,5 +1,5 @@
-import 'package:app_pessoal/core/backup/backup_codec.dart';
-import 'package:app_pessoal/core/backup/backup_config.dart';
+import 'package:aplicativo_all/core/backup/backup_codec.dart';
+import 'package:aplicativo_all/core/backup/backup_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

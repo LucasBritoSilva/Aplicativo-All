@@ -1,8 +1,8 @@
-import 'package:app_pessoal/core/backup/backup_codec.dart';
-import 'package:app_pessoal/core/backup/database_snapshot.dart';
-import 'package:app_pessoal/core/database/app_database.dart';
-import 'package:app_pessoal/features/shopping/domain/shopping_section.dart';
-import 'package:app_pessoal/features/tasks/domain/task_sorting.dart';
+import 'package:aplicativo_all/core/backup/backup_codec.dart';
+import 'package:aplicativo_all/core/backup/database_snapshot.dart';
+import 'package:aplicativo_all/core/database/app_database.dart';
+import 'package:aplicativo_all/features/shopping/domain/shopping_section.dart';
+import 'package:aplicativo_all/features/tasks/domain/task_sorting.dart';
 import 'package:drift/drift.dart' hide isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';

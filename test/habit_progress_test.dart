@@ -1,4 +1,4 @@
-import 'package:app_pessoal/features/habits/domain/habit_progress.dart';
+import 'package:aplicativo_all/features/habits/domain/habit_progress.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

@@ -1,4 +1,4 @@
-import 'package:app_pessoal/features/routine/domain/routine_logic.dart';
+import 'package:aplicativo_all/features/routine/domain/routine_logic.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

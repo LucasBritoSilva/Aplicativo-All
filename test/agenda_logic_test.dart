@@ -1,5 +1,5 @@
-import 'package:app_pessoal/core/utils/dates.dart';
-import 'package:app_pessoal/features/agenda/domain/agenda_logic.dart';
+import 'package:aplicativo_all/core/utils/dates.dart';
+import 'package:aplicativo_all/features/agenda/domain/agenda_logic.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
