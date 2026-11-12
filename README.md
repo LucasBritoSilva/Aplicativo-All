@@ -1,5 +1,12 @@
 # All
 
+> **Sobre este projeto:** criei o All por dois motivos. O primeiro foi ter,
+> num só lugar, as funcionalidades que eu achava importantes para o meu dia
+> a dia, como rotina, tarefas, faculdade e treinos. O
+> segundo foi entender melhor, na prática, como funciona o
+> [Claude Code](https://claude.com/claude-code), que foi essencial na
+> criação do app: do planejamento ao código, aos testes e à publicação.
+
 Aplicativo Android de organização pessoal, em português, que funciona
 **offline**: todos os dados ficam guardados no próprio celular. São 21
 módulos organizados em 6 categorias, num menu lateral, e uma tela inicial
