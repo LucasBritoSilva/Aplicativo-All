@@ -1,0 +1,41 @@
+name: app_pessoal
+description: "App pessoal de organização (somente Android)."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.7
+
+# Dependências pedidas na especificação, mais as auxiliares registradas
+# em DECISOES.md (drift_flutter, flutter_localizations, http).
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  drift: ^2.35.4
+  drift_flutter: ^0.3.1
+  flutter_local_notifications: ^23.0.1
+  flutter_riverpod: ^3.5.0
+  google_sign_in: ^7.2.0
+  googleapis: ^18.0.0
+  http: ^1.6.0
+  permission_handler: ^13.0.2
+  speech_to_text: ^7.5.0
+  timezone: ^0.11.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  # Geração do código do banco (drift).
+  drift_dev: ^2.35.3
+  build_runner: ^2.17.1
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    # Credenciais do backup no Google Drive (ver PENDENCIAS.md, etapa b).
+    - assets/config/google_drive.json
