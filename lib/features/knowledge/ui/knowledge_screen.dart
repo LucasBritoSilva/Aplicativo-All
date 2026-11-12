@@ -60,7 +60,11 @@ class _KnowledgeScreenState extends ConsumerState<KnowledgeScreen> {
               final shown = sortKnowledge([
                 for (final k in all)
                   if ((_category == null || k.category == _category) &&
-                      matchesQuery(_query, [k.title, k.description, k.category]))
+                      matchesQuery(_query, [
+                        k.title,
+                        k.description,
+                        k.category,
+                      ]))
                     k,
               ], _sort);
               return Column(
@@ -89,7 +93,8 @@ class _KnowledgeScreenState extends ConsumerState<KnowledgeScreen> {
                         : ListView.separated(
                             padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
                             itemCount: shown.length,
-                            separatorBuilder: (_, _) => const SizedBox(height: 8),
+                            separatorBuilder: (_, _) =>
+                                const SizedBox(height: 8),
                             itemBuilder: (context, i) => _KnowledgeCard(
                               item: shown[i],
                               onTap: () => _openForm(context, shown[i]),
@@ -134,7 +139,10 @@ class _KnowledgeCard extends ConsumerWidget {
               Row(
                 children: [
                   Expanded(
-                    child: Text(item.title, style: Theme.of(context).textTheme.titleMedium),
+                    child: Text(
+                      item.title,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                   ),
                   if (item.category != null) Pill(item.category!),
                 ],
@@ -161,7 +169,10 @@ class _KnowledgeCard extends ConsumerWidget {
                   const SizedBox(width: 8),
                   Text(
                     item.stars == null ? 'Sem avaliação' : '${item.stars}/5',
-                    style: const TextStyle(color: AppColors.textFaint, fontSize: 12),
+                    style: const TextStyle(
+                      color: AppColors.textFaint,
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ),
@@ -183,7 +194,9 @@ class _KnowledgeForm extends ConsumerStatefulWidget {
 
 class _KnowledgeFormState extends ConsumerState<_KnowledgeForm> {
   late final _title = TextEditingController(text: widget.item?.title);
-  late final _description = TextEditingController(text: widget.item?.description);
+  late final _description = TextEditingController(
+    text: widget.item?.description,
+  );
   late final _category = TextEditingController(text: widget.item?.category);
   late int? _stars = widget.item?.stars;
 
@@ -240,7 +253,9 @@ class _KnowledgeFormState extends ConsumerState<_KnowledgeForm> {
           controller: _title,
           autofocus: widget.item == null,
           textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(labelText: 'Conhecimento ou assunto'),
+          decoration: const InputDecoration(
+            labelText: 'Conhecimento ou assunto',
+          ),
         ),
         const SizedBox(height: 12),
         TextField(
@@ -256,7 +271,9 @@ class _KnowledgeFormState extends ConsumerState<_KnowledgeForm> {
           minLines: 2,
           maxLines: 6,
           textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(labelText: 'Descrição e observações'),
+          decoration: const InputDecoration(
+            labelText: 'Descrição e observações',
+          ),
         ),
         const SizedBox(height: 16),
         const Text('Domínio', style: TextStyle(color: AppColors.textMuted)),

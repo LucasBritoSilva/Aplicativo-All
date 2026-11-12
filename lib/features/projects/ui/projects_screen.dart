@@ -36,13 +36,18 @@ class ProjectsRepository {
     if (id == null) {
       await _db.into(_db.projectIdeas).insert(data);
     } else {
-      await (_db.update(_db.projectIdeas)..where((p) => p.id.equals(id))).write(data);
+      await (_db.update(
+        _db.projectIdeas,
+      )..where((p) => p.id.equals(id))).write(data);
     }
   }
 
   Future<void> setStage(int id, ProjectStage stage) =>
       (_db.update(_db.projectIdeas)..where((p) => p.id.equals(id))).write(
-        ProjectIdeasCompanion(stage: Value(stage), updatedAt: Value(DateTime.now())),
+        ProjectIdeasCompanion(
+          stage: Value(stage),
+          updatedAt: Value(DateTime.now()),
+        ),
       );
 
   Future<void> delete(int id) =>
@@ -82,7 +87,13 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
       title: p == null ? 'Nova ideia de projeto' : 'Editar projeto',
       deleteLabel: p == null ? null : 'Excluir projeto',
       fields: [
-        TextSpec('title', 'Título', initial: p?.title, required: true, autofocus: p == null),
+        TextSpec(
+          'title',
+          'Título',
+          initial: p?.title,
+          required: true,
+          autofocus: p == null,
+        ),
         TextSpec('description', 'Descrição', initial: p?.description, lines: 4),
         TextSpec(
           'tools',
@@ -151,13 +162,20 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
               final shown = [
                 for (final p in all)
                   if ((_stage == null || p.stage == _stage) &&
-                      matchesQuery(_query, [p.title, p.description, p.tools, p.notes]))
+                      matchesQuery(_query, [
+                        p.title,
+                        p.description,
+                        p.tools,
+                        p.notes,
+                      ]))
                     p,
               ];
               if (shown.isEmpty) {
                 return EmptyState(
                   icon: Icons.lightbulb_outline,
-                  title: all.isEmpty ? 'Nenhuma ideia ainda' : 'Nada encontrado',
+                  title: all.isEmpty
+                      ? 'Nenhuma ideia ainda'
+                      : 'Nada encontrado',
                   message: all.isEmpty
                       ? 'Anote ideias de projetos, as ferramentas que pretende '
                             'usar e acompanhe o estágio de cada uma.'
@@ -184,7 +202,9 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
                                 Expanded(
                                   child: Text(
                                     p.title,
-                                    style: Theme.of(context).textTheme.titleMedium,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium,
                                   ),
                                 ),
                                 PopupMenuButton<ProjectStage>(
@@ -195,7 +215,10 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
                                       .setStage(p.id, s),
                                   itemBuilder: (_) => [
                                     for (final s in ProjectStage.values)
-                                      PopupMenuItem(value: s, child: Text(s.label)),
+                                      PopupMenuItem(
+                                        value: s,
+                                        child: Text(s.label),
+                                      ),
                                   ],
                                   child: Pill(
                                     p.stage.label,
@@ -211,7 +234,9 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
                                 p.description!,
                                 maxLines: 3,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(color: AppColors.textMuted),
+                                style: const TextStyle(
+                                  color: AppColors.textMuted,
+                                ),
                               ),
                             ],
                             if (p.tools != null) ...[
@@ -219,7 +244,11 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen> {
                               Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Icon(Icons.build_outlined, size: 16, color: AppColors.textFaint),
+                                  const Icon(
+                                    Icons.build_outlined,
+                                    size: 16,
+                                    color: AppColors.textFaint,
+                                  ),
                                   const SizedBox(width: 6),
                                   Expanded(
                                     child: Text(

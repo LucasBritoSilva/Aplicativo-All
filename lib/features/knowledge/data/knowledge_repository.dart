@@ -16,7 +16,10 @@ enum KnowledgeSort {
 
 /// Ordena sem alterar a lista original. Itens sem avaliação ficam por
 /// último nas ordens por estrelas.
-List<KnowledgeItem> sortKnowledge(List<KnowledgeItem> items, KnowledgeSort sort) {
+List<KnowledgeItem> sortKnowledge(
+  List<KnowledgeItem> items,
+  KnowledgeSort sort,
+) {
   int byName(KnowledgeItem a, KnowledgeItem b) =>
       a.title.toLowerCase().compareTo(b.title.toLowerCase());
   final list = [...items];
@@ -31,7 +34,9 @@ List<KnowledgeItem> sortKnowledge(List<KnowledgeItem> items, KnowledgeSort sort)
         if (a.stars == null && b.stars == null) return byName(a, b);
         if (a.stars == null) return 1;
         if (b.stars == null) return -1;
-        final c = desc ? b.stars!.compareTo(a.stars!) : a.stars!.compareTo(b.stars!);
+        final c = desc
+            ? b.stars!.compareTo(a.stars!)
+            : a.stars!.compareTo(b.stars!);
         return c != 0 ? c : byName(a, b);
       });
   }
@@ -42,7 +47,8 @@ class KnowledgeRepository {
   KnowledgeRepository(this._db);
   final AppDatabase _db;
 
-  Stream<List<KnowledgeItem>> watchAll() => _db.select(_db.knowledgeItems).watch();
+  Stream<List<KnowledgeItem>> watchAll() =>
+      _db.select(_db.knowledgeItems).watch();
 
   Future<void> save({
     int? id,
@@ -64,7 +70,9 @@ class KnowledgeRepository {
     if (id == null) {
       await _db.into(_db.knowledgeItems).insert(data);
     } else {
-      await (_db.update(_db.knowledgeItems)..where((k) => k.id.equals(id))).write(data);
+      await (_db.update(
+        _db.knowledgeItems,
+      )..where((k) => k.id.equals(id))).write(data);
     }
   }
 

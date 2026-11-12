@@ -33,7 +33,9 @@ class CountersRepository {
     if (id == null) {
       await _db.into(_db.dayCounters).insert(data);
     } else {
-      await (_db.update(_db.dayCounters)..where((c) => c.id.equals(id))).write(data);
+      await (_db.update(
+        _db.dayCounters,
+      )..where((c) => c.id.equals(id))).write(data);
     }
   }
 
@@ -53,20 +55,35 @@ final countersProvider = StreamProvider<List<DayCounter>>(
 class CountersScreen extends ConsumerWidget {
   const CountersScreen({super.key});
 
-  Future<void> _open(BuildContext context, WidgetRef ref, [DayCounter? c]) async {
+  Future<void> _open(
+    BuildContext context,
+    WidgetRef ref, [
+    DayCounter? c,
+  ]) async {
     final r = await showQuickForm(
       context,
       title: c == null ? 'Novo contador' : 'Editar contador',
       deleteLabel: c == null ? null : 'Excluir contador',
       fields: [
-        TextSpec('title', 'Título', initial: c?.title, required: true, autofocus: c == null),
+        TextSpec(
+          'title',
+          'Título',
+          initial: c?.title,
+          required: true,
+          autofocus: c == null,
+        ),
         DateSpec(
           'day',
           'Data',
           initial: c == null ? null : dateFromEpochDay(c.day),
           required: true,
         ),
-        TextSpec('description', 'Descrição (opcional)', initial: c?.description, lines: 3),
+        TextSpec(
+          'description',
+          'Descrição (opcional)',
+          initial: c?.description,
+          lines: 3,
+        ),
       ],
     );
     if (r == null || !context.mounted) return;
@@ -166,7 +183,10 @@ class CountersScreen extends ConsumerWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(c.title, style: Theme.of(context).textTheme.titleMedium),
+                            Text(
+                              c.title,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
                             const SizedBox(height: 4),
                             Text(
                               '${count.label} · ${formatDate(dateFromEpochDay(c.day))}',

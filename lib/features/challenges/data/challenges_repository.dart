@@ -41,7 +41,8 @@ class ChallengesRepository {
       (byChallenge[c.challengeId] ??= []).add(c);
     }
     return [
-      for (final c in challenges) ChallengeView(c, byChallenge[c.id] ?? const []),
+      for (final c in challenges)
+        ChallengeView(c, byChallenge[c.id] ?? const []),
     ];
   }
 
@@ -68,7 +69,9 @@ class ChallengesRepository {
     if (id == null) {
       await _db.into(_db.challenges).insert(data);
     } else {
-      await (_db.update(_db.challenges)..where((c) => c.id.equals(id))).write(data);
+      await (_db.update(
+        _db.challenges,
+      )..where((c) => c.id.equals(id))).write(data);
       await _refreshCompletion(id, DateTime.now());
     }
   }
@@ -83,9 +86,8 @@ class ChallengesRepository {
     int amount, {
     DateTime? now,
   }) => _db.transaction(() async {
-    await (_db.delete(_db.challengeCheckins)..where(
-          (c) => c.challengeId.equals(challengeId) & c.day.equals(day),
-        ))
+    await (_db.delete(_db.challengeCheckins)
+          ..where((c) => c.challengeId.equals(challengeId) & c.day.equals(day)))
         .go();
     if (amount > 0) {
       await _db
@@ -117,11 +119,13 @@ class ChallengesRepository {
       today: 0,
     ).reached;
     if (reached && c.completedAt == null) {
-      await (_db.update(_db.challenges)..where((x) => x.id.equals(id)))
-          .write(ChallengesCompanion(completedAt: Value(now)));
+      await (_db.update(_db.challenges)..where((x) => x.id.equals(id))).write(
+        ChallengesCompanion(completedAt: Value(now)),
+      );
     } else if (!reached && c.completedAt != null) {
-      await (_db.update(_db.challenges)..where((x) => x.id.equals(id)))
-          .write(const ChallengesCompanion(completedAt: Value(null)));
+      await (_db.update(_db.challenges)..where((x) => x.id.equals(id))).write(
+        const ChallengesCompanion(completedAt: Value(null)),
+      );
     }
   }
 }

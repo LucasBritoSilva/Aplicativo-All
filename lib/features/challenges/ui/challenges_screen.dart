@@ -82,8 +82,19 @@ Future<void> openChallengeForm(
     title: c == null ? 'Novo desafio' : 'Editar desafio',
     deleteLabel: c == null ? null : 'Excluir desafio',
     fields: [
-      TextSpec('title', 'Desafio', initial: c?.title, required: true, autofocus: c == null),
-      TextSpec('description', 'Descrição (opcional)', initial: c?.description, lines: 3),
+      TextSpec(
+        'title',
+        'Desafio',
+        initial: c?.title,
+        required: true,
+        autofocus: c == null,
+      ),
+      TextSpec(
+        'description',
+        'Descrição (opcional)',
+        initial: c?.description,
+        lines: 3,
+      ),
       ChoiceSpec<ChallengeMode>(
         'mode',
         'Como medir',
@@ -191,15 +202,25 @@ class _ChallengeCard extends ConsumerWidget {
               Row(
                 children: [
                   Expanded(
-                    child: Text(c.title, style: Theme.of(context).textTheme.titleMedium),
+                    child: Text(
+                      c.title,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                   ),
                   if (c.completedAt != null)
-                    const Pill('Concluído', color: AppColors.success, icon: Icons.emoji_events),
+                    const Pill(
+                      'Concluído',
+                      color: AppColors.success,
+                      icon: Icons.emoji_events,
+                    ),
                 ],
               ),
               if (c.description != null) ...[
                 const SizedBox(height: 4),
-                Text(c.description!, style: const TextStyle(color: AppColors.textMuted)),
+                Text(
+                  c.description!,
+                  style: const TextStyle(color: AppColors.textMuted),
+                ),
               ],
               const SizedBox(height: 12),
               ProgressBar(value: p.fraction, height: 8),
@@ -212,7 +233,10 @@ class _ChallengeCard extends ConsumerWidget {
               Text(
                 'Sequência atual: ${p.streak} ${p.streak == 1 ? 'dia' : 'dias'}'
                 ' · melhor: ${p.bestStreak}',
-                style: const TextStyle(color: AppColors.textFaint, fontSize: 13),
+                style: const TextStyle(
+                  color: AppColors.textFaint,
+                  fontSize: 13,
+                ),
               ),
               if (!started)
                 Padding(
