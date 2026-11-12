@@ -1,0 +1,44 @@
+# Publica a versão quando uma tag vX.Y.Z é enviada.
+#
+# O APK de produção é assinado no computador do proprietário (a chave não
+# fica no GitHub) e enviado ao ramo "distribuicao", na pasta da versão.
+# Este fluxo confere o SHA-256 e cria a Release pública com esses arquivos.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Arquivos da versão (ramo distribuicao)
+        uses: actions/checkout@v4
+        with:
+          ref: distribuicao
+
+      - name: Conferir os APKs
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          test -d "$TAG" || { echo "Pasta $TAG não existe no ramo distribuicao"; exit 1; }
+          cd "$TAG"
+          sha256sum -c SHA256SUMS.txt
+          ls -la
+
+      - name: Criar a Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          cd "$TAG"
+          gh release create "$TAG" *.apk SHA256SUMS.txt \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "All ${TAG#v}" \
+            --notes-file NOTAS.md \
+            --verify-tag
