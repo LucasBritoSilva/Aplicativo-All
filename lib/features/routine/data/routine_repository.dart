@@ -331,7 +331,7 @@ class RoutineRepository {
   // -------------------------------------------------------------------
 
   Future<List<OccurrenceView>> _views(List<RoutineOccurrence> occs) async {
-    if (occs.isEmpty) return const [];
+    if (occs.isEmpty) return <OccurrenceView>[];
     final ids = [for (final o in occs) o.id];
     final sessions =
         await (_db.select(_db.routineSessions)
