@@ -1,25 +1,26 @@
 @echo off
 setlocal
 rem ==================================================================
-rem  Gera o APK debug do App Pessoal e copia para
-rem  ..\entrega\app_pessoal-debug.apk
+rem  Gera o APK do All e copia para ..\entrega\All.apk
 rem
-rem  A pasta do projeto tem acentos ("Programacao" com cedilha e til),
-rem  o que quebra algumas ferramentas do Flutter no Windows. Por isso o
-rem  script cria uma unidade virtual temporaria (ex.: P:) apontando para
-rem  a pasta acima deste arquivo, gera o APK por ela e remove a unidade
-rem  no final. Nada fora do projeto e alterado.
+rem  Se android\key.properties existir, o APK sai assinado com a chave
+rem  de producao (ver docs\PUBLICACAO.md); senao, com a chave de debug.
+rem
+rem  A pasta do projeto pode ter acentos, o que quebra algumas
+rem  ferramentas do Flutter no Windows. Por isso o script cria uma
+rem  unidade virtual temporaria (ex.: P:) apontando para a pasta acima
+rem  deste arquivo, gera o APK por ela e remove a unidade no final.
 rem ==================================================================
 
 set "PROJ=%~dp0"
 set "PROJ=%PROJ:~0,-1%"
 for %%I in ("%PROJ%\..") do set "ROOT=%%~fI"
+for %%I in ("%PROJ%") do set "NAME=%%~nxI"
 
 where flutter >nul 2>nul
 if errorlevel 1 (
   echo O comando flutter nao foi encontrado.
   echo Feche esta janela, abra de novo e tente outra vez.
-  echo Se continuar, veja PENDENCIAS.md, etapa a.
   pause
   exit /b 1
 )
@@ -41,22 +42,25 @@ if errorlevel 1 (
   exit /b 1
 )
 
-pushd %DRV%\app_pessoal
+pushd %DRV%\%NAME%
 echo.
 echo === Baixando dependencias ===
 call flutter pub get
 echo.
+echo === Gerando o codigo do banco ===
+call dart run build_runner build --delete-conflicting-outputs --force-jit
+echo.
 echo === Gerando o APK (pode levar varios minutos na primeira vez) ===
-call flutter build apk --debug
+call flutter build apk --release
 set "ERR=%ERRORLEVEL%"
 
 if "%ERR%"=="0" (
   if not exist "%DRV%\entrega" mkdir "%DRV%\entrega"
-  copy /Y "build\app\outputs\flutter-apk\app-debug.apk" "%DRV%\entrega\app_pessoal-debug.apk" >nul
+  copy /Y "build\app\outputs\flutter-apk\app-release.apk" "%DRV%\entrega\All.apk" >nul
   echo.
   echo ==============================================================
   echo  Pronto! APK gerado em:
-  echo  %ROOT%\entrega\app_pessoal-debug.apk
+  echo  %ROOT%\entrega\All.apk
   echo ==============================================================
 ) else (
   echo.
