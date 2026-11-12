@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Mesmo fundo quase preto do app (tema escuro único). -->
+    <color name="app_background">#FF0C0C0F</color>
+</resources>
