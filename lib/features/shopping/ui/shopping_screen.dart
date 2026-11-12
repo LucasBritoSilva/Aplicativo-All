@@ -7,31 +7,18 @@ import '../../../core/widgets/common.dart';
 import '../data/shopping_repository.dart';
 import '../domain/shopping_section.dart';
 
+/// Aba "Mercado": itens por seção do mercado, marcados como comprados.
 class ShoppingScreen extends ConsumerWidget {
   const ShoppingScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final items = ref.watch(shoppingItemsProvider);
-    final hasBought = items.maybeWhen(
-      data: (list) => list.any((i) => i.bought),
-      orElse: () => false,
-    );
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Compras'),
-        actions: [
-          if (hasBought)
-            IconButton(
-              tooltip: 'Limpar comprados',
-              icon: const Icon(Icons.remove_done),
-              onPressed: () => _clearBought(context, ref),
-            ),
-        ],
-      ),
       floatingActionButton: FloatingActionButton(
         tooltip: 'Adicionar item',
+        heroTag: null,
         onPressed: () => _openForm(context),
         child: const Icon(Icons.add),
       ),
@@ -51,10 +38,22 @@ class ShoppingScreen extends ConsumerWidget {
             padding: const EdgeInsets.only(bottom: 96),
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
-                child: Text(
-                  '$bought de ${list.length} no carrinho',
-                  style: const TextStyle(color: AppColors.textMuted),
+                padding: const EdgeInsets.fromLTRB(20, 4, 8, 0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '$bought de ${list.length} no carrinho',
+                        style: const TextStyle(color: AppColors.textMuted),
+                      ),
+                    ),
+                    if (bought > 0)
+                      TextButton.icon(
+                        onPressed: () => _clearBought(context, ref),
+                        icon: const Icon(Icons.remove_done, size: 18),
+                        label: const Text('Limpar comprados'),
+                      ),
+                  ],
                 ),
               ),
               for (final section in ShoppingSection.values)
@@ -211,6 +210,14 @@ class _ShoppingFormState extends ConsumerState<_ShoppingForm> {
   }
 
   Future<void> _delete() async {
+    final ok = await confirm(
+      context,
+      title: 'Excluir item',
+      message: '"${widget.item!.name}" sairá da lista.',
+      confirmLabel: 'Excluir',
+      destructive: true,
+    );
+    if (!ok) return;
     await ref.read(shoppingRepositoryProvider).delete(widget.item!.id);
     if (mounted) Navigator.pop(context);
   }
