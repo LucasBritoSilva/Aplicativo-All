@@ -13,6 +13,11 @@ abstract final class AppColors {
   static const textMuted = Color(0xFF9A9AA6);
   static const textFaint = Color(0xFF65656F);
   static const danger = Color(0xFFF07A74);
+
+  /// Estados: concluído, atenção (parcial/pausado) e informação (retomada).
+  static const success = Color(0xFF6FCF97);
+  static const warning = Color(0xFFE5B567);
+  static const info = Color(0xFF6FB6E8);
 }
 
 /// Tema escuro único do app (sem modo claro nesta versão).
