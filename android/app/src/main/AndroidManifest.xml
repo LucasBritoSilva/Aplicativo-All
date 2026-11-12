@@ -1,7 +1,21 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Somente para o backup manual no Google Drive. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- Limite de uso de apps: ler o tempo de uso (o usuário libera em
+         "Acesso ao uso"), mostrar o contador flutuante e manter o serviço
+         que o atualiza. Nenhum app é bloqueado. -->
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions"/>
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
+
+    <!-- Cofre: desbloqueio por biometria ou pelo bloqueio de tela. -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
 
     <!-- Notificações (Android 13+): pedida em tempo de execução. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
@@ -15,16 +29,23 @@
         android:maxSdkVersion="32"/>
     <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
 
-    <!-- Reagendar os lembretes depois que o celular é reiniciado. -->
+    <!-- Reagendar lembretes e rotina e religar o contador de uso depois que
+         o celular é reiniciado. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 
     <!-- Captura de ideias por voz. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
 
+    <!-- Backup automático do Android desligado: os dados (inclusive o
+         cofre) não saem do aparelho sem o usuário pedir. -->
     <application
         android:label="All"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        tools:targetApi="31">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -61,6 +82,24 @@
             </intent-filter>
         </receiver>
 
+        <!-- Contador flutuante do limite de uso de apps. -->
+        <service
+            android:name=".UsageMonitorService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Mostra sobre o app em uso o tempo restante do limite diário escolhido pelo usuário"/>
+        </service>
+        <receiver
+            android:name=".MonitorBootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+            </intent-filter>
+        </receiver>
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
@@ -77,6 +116,19 @@
         <!-- Necessário para encontrar o serviço de reconhecimento de voz. -->
         <intent>
             <action android:name="android.speech.RecognitionService"/>
+        </intent>
+        <!-- Listar os apps com ícone na tela inicial (limite de uso). -->
+        <intent>
+            <action android:name="android.intent.action.MAIN"/>
+            <category android:name="android.intent.category.LAUNCHER"/>
+        </intent>
+        <!-- Abrir links (desejos, WhatsApp) e o discador (contatos). -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.DIAL"/>
         </intent>
     </queries>
 </manifest>
