@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.app_pessoal"
+    namespace = "io.github.lucasbritosilva.aplicativoall"
     // flutter_local_notifications 23 e permission_handler 13 exigem compileSdk 37.
     compileSdk = 37
     ndkVersion = flutter.ndkVersion
@@ -18,8 +18,8 @@ android {
     }
 
     defaultConfig {
-        // Nome do pacote: é este valor que vai no cliente OAuth Android do Google Cloud.
-        applicationId = "com.example.app_pessoal"
+        // Identificador público do app. Não mude: é ele que permite atualizar por cima.
+        applicationId = "io.github.lucasbritosilva.aplicativoall"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

@@ -1,4 +1,4 @@
-package com.example.app_pessoal
+package io.github.lucasbritosilva.aplicativoall
 
 import io.flutter.embedding.android.FlutterActivity
 
