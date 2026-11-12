@@ -7,9 +7,18 @@ class NotesRepository {
   NotesRepository(this._db);
   final AppDatabase _db;
 
-  Stream<List<Note>> watchAll() => (_db.select(
-    _db.notes,
-  )..orderBy([(n) => OrderingTerm.desc(n.updatedAt)])).watch();
+  /// Fixadas primeiro; depois as alteradas mais recentemente.
+  Stream<List<Note>> watchAll() =>
+      (_db.select(_db.notes)..orderBy([
+            (n) => OrderingTerm.desc(n.pinned),
+            (n) => OrderingTerm.desc(n.updatedAt),
+          ]))
+          .watch();
+
+  Future<void> setPinned(int id, bool pinned) =>
+      (_db.update(_db.notes)..where((n) => n.id.equals(id))).write(
+        NotesCompanion(pinned: Value(pinned)),
+      );
 
   Future<void> save({
     int? id,
