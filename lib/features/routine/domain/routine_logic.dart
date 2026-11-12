@@ -471,3 +471,31 @@ RoutineSummary summarizeRoutine(
     timerSeconds: seconds,
   );
 }
+
+// ---------------------------------------------------------------------
+// Conflitos no planejamento recorrente
+// ---------------------------------------------------------------------
+
+/// Se duas atividades planejadas ocupam o mesmo horário em algum dia em
+/// comum (mesmo dia da semana, ou a data única de uma cai num dia da
+/// outra). Serve para avisar o usuário ao planejar; a decisão é dele.
+bool plansOverlap({
+  required int startA,
+  required int endA,
+  required int weekdaysA,
+  required int? singleDayA,
+  required int startB,
+  required int endB,
+  required int weekdaysB,
+  required int? singleDayB,
+}) {
+  if (!(startA < endB && startB < endA)) return false;
+  if (singleDayA != null && singleDayB != null) return singleDayA == singleDayB;
+  if (singleDayA != null) {
+    return maskHasWeekday(weekdaysB, weekdayOfEpochDay(singleDayA));
+  }
+  if (singleDayB != null) {
+    return maskHasWeekday(weekdaysA, weekdayOfEpochDay(singleDayB));
+  }
+  return weekdaysA & weekdaysB != 0;
+}
