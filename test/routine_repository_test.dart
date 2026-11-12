@@ -34,10 +34,9 @@ void main() {
   );
 
   Future<RoutineOccurrence> occOn(int day, {int? activityId}) async {
-    final list = await (db.select(db.routineOccurrences)..where(
-          (o) => o.originalDay.equals(day),
-        ))
-        .get();
+    final list = await (db.select(
+      db.routineOccurrences,
+    )..where((o) => o.originalDay.equals(day))).get();
     return activityId == null
         ? list.single
         : list.singleWhere((o) => o.activityId == activityId);
@@ -151,7 +150,10 @@ void main() {
       final after = (await db.select(db.routineOccurrences).get()).length;
       expect(after, before);
       // Aparece no dia novo e, como "saiu daqui", no dia original.
-      final newDay = buildDayEntries(await repo.loadDay(monday + 1), monday + 1);
+      final newDay = buildDayEntries(
+        await repo.loadDay(monday + 1),
+        monday + 1,
+      );
       expect(newDay.single.kind, DayEntryKind.normal);
       final oldDay = buildDayEntries(await repo.loadDay(monday), monday);
       expect(oldDay.single.kind, DayEntryKind.movedAway);
@@ -234,15 +236,24 @@ void main() {
       final start = DateTime(2026, 11, 9, 14, 0);
 
       await repo.start(id, start);
-      expect((await view(id)).doneSeconds(start.add(const Duration(minutes: 10))), 600);
+      expect(
+        (await view(id)).doneSeconds(start.add(const Duration(minutes: 10))),
+        600,
+      );
 
       await repo.pause(id, start.add(const Duration(minutes: 10)));
       // Uma hora pausada não conta.
-      expect((await view(id)).doneSeconds(start.add(const Duration(minutes: 70))), 600);
+      expect(
+        (await view(id)).doneSeconds(start.add(const Duration(minutes: 70))),
+        600,
+      );
       expect((await view(id)).occ.status, OccurrenceStatus.paused);
 
       await repo.resume(id, start.add(const Duration(minutes: 70)));
-      expect((await view(id)).doneSeconds(start.add(const Duration(minutes: 85))), 1500);
+      expect(
+        (await view(id)).doneSeconds(start.add(const Duration(minutes: 85))),
+        1500,
+      );
       // Pausar e continuar não cria outra sessão.
       expect((await view(id)).sessions, hasLength(1));
     });
@@ -416,10 +427,7 @@ void main() {
 
       final list = await repo.loadResumeList();
       expect(list.map((v) => v.id), [first, second]);
-      expect(
-        list.first.resume!.listEnteredAt,
-        DateTime(2026, 11, 9, 9, 10),
-      );
+      expect(list.first.resume!.listEnteredAt, DateTime(2026, 11, 9, 9, 10));
       // E o tempo das duas sessões foi somado.
       expect(list.first.doneSeconds(DateTime(2026, 11, 13)), 25 * 60);
     });
@@ -459,7 +467,10 @@ void main() {
         now: DateTime(2026, 11, 9, 15),
       );
       expect(await repo.loadResumeList(), isEmpty);
-      final entries = buildDayEntries(await repo.loadDay(monday + 2), monday + 2);
+      final entries = buildDayEntries(
+        await repo.loadDay(monday + 2),
+        monday + 2,
+      );
       final continuation = entries.singleWhere(
         (e) => e.kind == DayEntryKind.continuation,
       );
@@ -520,29 +531,32 @@ void main() {
     expect(await RoutineRepository(db, SettingsRepository(db)).tolerance(), 30);
   });
 
-  test('ocorrências pendentes e continuações entram no plano de avisos', () async {
-    await createStudy();
-    final mon = (await occOn(monday)).id;
-    final wed = (await occOn(monday + 2)).id;
-    await repo.start(wed, t0);
-    await repo.scheduleContinuation(
-      wed,
-      day: monday + 3,
-      start: 9 * 60,
-      end: 10 * 60,
-      now: t0.add(const Duration(minutes: 5)),
-    );
-    final plan = planRoutineNotifications(
-      occurrences: await repo.loadNotifiable(monday),
-      now: t0.add(const Duration(minutes: 5)),
-    );
-    final ids = plan.map((p) => p.id).toSet();
-    expect(ids, contains(startNotificationId(mon)));
-    expect(ids, contains(continuationNotificationId(wed)));
-    expect(ids, isNot(contains(startNotificationId(wed))));
-    // Uma notificação por ocorrência: nenhum id repetido.
-    expect(ids.length, plan.length);
-  });
+  test(
+    'ocorrências pendentes e continuações entram no plano de avisos',
+    () async {
+      await createStudy();
+      final mon = (await occOn(monday)).id;
+      final wed = (await occOn(monday + 2)).id;
+      await repo.start(wed, t0);
+      await repo.scheduleContinuation(
+        wed,
+        day: monday + 3,
+        start: 9 * 60,
+        end: 10 * 60,
+        now: t0.add(const Duration(minutes: 5)),
+      );
+      final plan = planRoutineNotifications(
+        occurrences: await repo.loadNotifiable(monday),
+        now: t0.add(const Duration(minutes: 5)),
+      );
+      final ids = plan.map((p) => p.id).toSet();
+      expect(ids, contains(startNotificationId(mon)));
+      expect(ids, contains(continuationNotificationId(wed)));
+      expect(ids, isNot(contains(startNotificationId(wed))));
+      // Uma notificação por ocorrência: nenhum id repetido.
+      expect(ids.length, plan.length);
+    },
+  );
 
   test('Value do drift não é confundido com o matcher', () {
     // Garante que o import "hide" acima segue necessário.

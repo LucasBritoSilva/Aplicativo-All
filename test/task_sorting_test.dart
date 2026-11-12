@@ -58,11 +58,7 @@ void main() {
 
     test('a hora do prazo é ignorada; empate desfeito pela criação', () {
       final sorted = sortTasks([
-        _t(
-          1,
-          due: DateTime(2026, 11, 12, 23),
-          created: DateTime(2026, 1, 3),
-        ),
+        _t(1, due: DateTime(2026, 11, 12, 23), created: DateTime(2026, 1, 3)),
         _t(2, due: DateTime(2026, 11, 12, 1), created: DateTime(2026, 1, 2)),
       ], (t) => t);
       expect(_ids(sorted), [2, 1]);

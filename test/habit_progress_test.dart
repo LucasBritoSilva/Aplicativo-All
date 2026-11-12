@@ -49,9 +49,7 @@ void main() {
 
     test('passar da meta não ultrapassa 100%', () {
       final p = habitWeekProgress(
-        checks: [
-          for (var d = 9; d <= 15; d++) DateTime(2026, 11, d),
-        ],
+        checks: [for (var d = 9; d <= 15; d++) DateTime(2026, 11, d)],
         weeklyTarget: 3,
         today: today,
       );
