@@ -100,8 +100,18 @@ class _ModuleTile extends ConsumerWidget {
               Row(
                 children: [
                   Icon(module.icon, color: color, size: 28),
-                  const Spacer(),
-                  if (suggestion) const Pill('Sugestão'),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: suggestion
+                        ? const Align(
+                            alignment: Alignment.centerRight,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Pill('Sugestão'),
+                            ),
+                          )
+                        : const SizedBox.shrink(),
+                  ),
                 ],
               ),
               const Spacer(),
