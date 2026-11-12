@@ -3,7 +3,7 @@ import 'package:drift/drift.dart';
 import '../../features/shopping/domain/shopping_section.dart';
 import '../../features/tasks/domain/task_sorting.dart';
 
-/// 1. Lista de compras.
+/// Lista de mercado, organizada pelas seções do mercado.
 class ShoppingItems extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text()();
@@ -13,27 +13,7 @@ class ShoppingItems extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
-/// 2. Itens da rotina diária. [doneOn] guarda o dia em que foi marcado:
-/// o item só conta como feito se esse dia for hoje.
-class RoutineItems extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  TextColumn get title => text()();
-  IntColumn get position => integer().withDefault(const Constant(0))();
-  DateTimeColumn get doneOn => dateTime().nullable()();
-}
-
-/// 3. Eventos da agenda (somente locais).
-@DataClassName('AgendaEvent')
-class AgendaEvents extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  TextColumn get title => text()();
-  TextColumn get notes => text().nullable()();
-  DateTimeColumn get startsAt => dateTime()();
-  DateTimeColumn get endsAt => dateTime().nullable()();
-  BoolColumn get allDay => boolean().withDefault(const Constant(false))();
-}
-
-/// 4. Tarefas com prioridade e prazo.
+/// Tarefas com prioridade e prazo.
 @DataClassName('TaskItem')
 class Tasks extends Table {
   IntColumn get id => integer().autoIncrement()();
@@ -43,9 +23,22 @@ class Tasks extends Table {
   DateTimeColumn get dueDate => dateTime().nullable()();
   BoolColumn get done => boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  /// Quando foi concluída (usado nas estatísticas); nulo se está pendente.
+  DateTimeColumn get completedAt => dateTime().nullable()();
 }
 
-/// 5. Lembretes com notificação em horário exato.
+/// Subtarefas de uma tarefa.
+class TaskSubtasks extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get taskId =>
+      integer().references(Tasks, #id, onDelete: KeyAction.cascade)();
+  TextColumn get title => text()();
+  BoolColumn get done => boolean().withDefault(const Constant(false))();
+  IntColumn get position => integer().withDefault(const Constant(0))();
+}
+
+/// Lembretes com notificação em horário exato.
 class Reminders extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get title => text()();
@@ -53,7 +46,7 @@ class Reminders extends Table {
   DateTimeColumn get scheduledAt => dateTime()();
 }
 
-/// 6. Hábitos com meta semanal.
+/// Hábitos com meta semanal.
 class Habits extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text()();
@@ -74,7 +67,7 @@ class HabitChecks extends Table {
   ];
 }
 
-/// 7. Metas de longo prazo.
+/// Metas de longo prazo.
 class Goals extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get title => text()();
@@ -85,12 +78,15 @@ class Goals extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
 
-/// 8 e 9. Anotações (as ideias por voz também viram anotações).
+/// Anotações (as ideias por voz também viram anotações).
 class Notes extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get title => text().nullable()();
   TextColumn get body => text()();
   BoolColumn get fromVoice => boolean().withDefault(const Constant(false))();
+
+  /// Notas fixadas aparecem no topo da lista.
+  BoolColumn get pinned => boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }
