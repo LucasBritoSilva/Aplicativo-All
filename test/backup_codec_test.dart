@@ -40,7 +40,7 @@ void main() {
     test('recusa formato mais novo', () {
       expect(
         () => BackupSnapshot.decode(
-          '{"app":"app_pessoal","format":99,"schemaVersion":1,'
+          '{"app":"aplicativo_all","format":99,"schemaVersion":1,'
           '"exportedAt":"2026-11-11T00:00:00Z","tables":{}}',
         ),
         throwsFormatException,
@@ -50,7 +50,7 @@ void main() {
     test('recusa valores aninhados nas linhas', () {
       expect(
         () => BackupSnapshot.decode(
-          '{"app":"app_pessoal","format":1,"schemaVersion":1,'
+          '{"app":"aplicativo_all","format":1,"schemaVersion":1,'
           '"exportedAt":"2026-11-11T00:00:00Z",'
           '"tables":{"tasks":[{"id":{"x":1}}]}}',
         ),

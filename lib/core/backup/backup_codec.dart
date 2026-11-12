@@ -5,9 +5,9 @@ import 'dart:convert';
 /// Formato do arquivo JSON:
 /// ```json
 /// {
-///   "app": "app_pessoal",
+///   "app": "aplicativo_all",
 ///   "format": 1,
-///   "schemaVersion": 1,
+///   "schemaVersion": 2,
 ///   "exportedAt": "2026-11-11T17:30:00.000Z",
 ///   "tables": { "tasks": [ { "id": 1, "title": "..." } ], ... }
 /// }
@@ -19,7 +19,7 @@ class BackupSnapshot {
     required this.tables,
   });
 
-  static const appId = 'app_pessoal';
+  static const appId = 'aplicativo_all';
   static const formatVersion = 1;
 
   /// Versão do banco que gerou o backup.
