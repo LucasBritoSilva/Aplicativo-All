@@ -26,6 +26,7 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
   late final _title = TextEditingController(text: widget.note?.title);
   late final _body = TextEditingController(text: widget.note?.body);
   bool _deleted = false;
+  late bool _pinned = widget.note?.pinned ?? false;
 
   @override
   void dispose() {
@@ -73,6 +74,17 @@ class _NoteEditorScreenState extends ConsumerState<NoteEditorScreen> {
         appBar: AppBar(
           title: Text(widget.note == null ? 'Nova anotação' : 'Anotação'),
           actions: [
+            if (widget.note != null)
+              IconButton(
+                tooltip: _pinned ? 'Desafixar' : 'Fixar no topo',
+                icon: Icon(_pinned ? Icons.push_pin : Icons.push_pin_outlined),
+                onPressed: () {
+                  setState(() => _pinned = !_pinned);
+                  ref
+                      .read(notesRepositoryProvider)
+                      .setPinned(widget.note!.id, _pinned);
+                },
+              ),
             if (widget.note != null)
               IconButton(
                 tooltip: 'Excluir',
