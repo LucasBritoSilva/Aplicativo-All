@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -20,23 +22,34 @@ enum ScheduleOutcome {
   failed,
 }
 
+/// Canais de notificação do app. O usuário pode silenciar cada um
+/// separadamente nas configurações do Android.
+enum AppChannel {
+  reminders('lembretes', 'Lembretes', 'Avisos dos lembretes agendados no app'),
+  routine('rotina', 'Rotina', 'Aviso no horário de início de cada atividade'),
+  breaks('pausas', 'Pausas', 'Aviso do fim do período de foco ou de pausa');
+
+  const AppChannel(this.id, this.title, this.description);
+  final String id;
+  final String title;
+  final String description;
+}
+
 /// Serviço central de notificações locais.
 ///
-/// Os horários são convertidos para UTC antes de agendar: um lembrete é um
-/// instante único, então não depende do fuso do aparelho (ver DECISOES.md).
+/// Os horários são convertidos para UTC antes de agendar: cada aviso é um
+/// instante único. Os horários da rotina (que seguem o relógio local) são
+/// recalculados sempre que o app abre, o que cobre mudança de fuso.
 class NotificationService {
   NotificationService([FlutterLocalNotificationsPlugin? plugin])
     : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
 
   final FlutterLocalNotificationsPlugin _plugin;
+  final _taps = StreamController<String>.broadcast();
   bool _ready = false;
 
-  static const _channel = AndroidNotificationChannel(
-    'lembretes',
-    'Lembretes',
-    description: 'Avisos dos lembretes agendados no app',
-    importance: Importance.high,
-  );
+  /// Conteúdo (payload) das notificações tocadas com o app aberto.
+  Stream<String> get taps => _taps.stream;
 
   AndroidFlutterLocalNotificationsPlugin? get _android =>
       _plugin.resolvePlatformSpecificImplementation<
@@ -50,11 +63,35 @@ class NotificationService {
         settings: const InitializationSettings(
           android: AndroidInitializationSettings('ic_notification'),
         ),
+        onDidReceiveNotificationResponse: (response) {
+          final payload = response.payload;
+          if (payload != null && payload.isNotEmpty) _taps.add(payload);
+        },
       );
-      await _android?.createNotificationChannel(_channel);
+      for (final c in AppChannel.values) {
+        await _android?.createNotificationChannel(
+          AndroidNotificationChannel(
+            c.id,
+            c.title,
+            description: c.description,
+            importance: Importance.high,
+          ),
+        );
+      }
       _ready = true;
     } catch (e) {
       debugPrint('Falha ao iniciar notificações: $e');
+    }
+  }
+
+  /// Payload da notificação que abriu o app (quando ele estava fechado).
+  Future<String?> launchPayload() async {
+    try {
+      final details = await _plugin.getNotificationAppLaunchDetails();
+      if (details == null || !details.didNotificationLaunchApp) return null;
+      return details.notificationResponse?.payload;
+    } catch (_) {
+      return null;
     }
   }
 
@@ -82,17 +119,19 @@ class NotificationService {
     required String title,
     String? body,
     required DateTime when,
+    String? payload,
+    AppChannel channel = AppChannel.reminders,
   }) async {
     await init();
     if (!when.isAfter(DateTime.now())) return ScheduleOutcome.past;
 
     final exact = await canScheduleExact();
     final scheduled = tz.TZDateTime.from(when.toUtc(), tz.UTC);
-    const details = NotificationDetails(
+    final details = NotificationDetails(
       android: AndroidNotificationDetails(
-        'lembretes',
-        'Lembretes',
-        channelDescription: 'Avisos dos lembretes agendados no app',
+        channel.id,
+        channel.title,
+        channelDescription: channel.description,
         importance: Importance.high,
         priority: Priority.high,
         category: AndroidNotificationCategory.reminder,
@@ -106,6 +145,7 @@ class NotificationService {
       scheduledDate: scheduled,
       notificationDetails: details,
       androidScheduleMode: mode,
+      payload: payload,
     );
 
     try {
@@ -141,12 +181,15 @@ class NotificationService {
   }
 
   /// Ids das notificações agendadas que ainda não dispararam.
-  Future<Set<int>> pendingIds() async {
+  Future<Set<int>> pendingIds() async => (await pendingPayloads()).keys.toSet();
+
+  /// Notificações agendadas: id e o conteúdo (payload) de cada uma.
+  Future<Map<int, String?>> pendingPayloads() async {
     try {
       final pending = await _plugin.pendingNotificationRequests();
-      return pending.map((p) => p.id).toSet();
+      return {for (final p in pending) p.id: p.payload};
     } catch (_) {
-      return <int>{};
+      return <int, String?>{};
     }
   }
 }
