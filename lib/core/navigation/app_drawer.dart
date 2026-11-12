@@ -55,7 +55,10 @@ class AppDrawer extends ConsumerWidget {
                   for (final module in modulesOf(category))
                     ListTile(
                       dense: true,
-                      contentPadding: const EdgeInsets.only(left: 32, right: 16),
+                      contentPadding: const EdgeInsets.only(
+                        left: 32,
+                        right: 16,
+                      ),
                       leading: Icon(module.icon, size: 22),
                       title: Text(module.title),
                       onTap: () {
