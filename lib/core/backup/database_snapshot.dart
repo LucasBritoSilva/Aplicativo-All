@@ -3,14 +3,26 @@ import 'package:drift/drift.dart';
 import '../database/app_database.dart';
 import 'backup_codec.dart';
 
+/// Tabelas que nunca vão para o backup.
+///
+/// O cofre fica de fora: o conteúdo é cifrado por uma chave que só existe
+/// no Android Keystore deste aparelho e não pode ser exportada, então a
+/// cópia seria ilegível. Restaurar também não apaga o cofre local.
+const backupExcludedTables = {'vault_entries'};
+
 /// Exporta e importa o banco inteiro, tabela por tabela.
 class DatabaseSnapshot {
   const DatabaseSnapshot(this._db);
   final AppDatabase _db;
 
+  List<TableInfo<Table, dynamic>> get _tablesInBackup => [
+    for (final t in _db.allTables)
+      if (!backupExcludedTables.contains(t.actualTableName)) t,
+  ];
+
   Future<BackupSnapshot> export() async {
     final tables = <String, List<Map<String, Object?>>>{};
-    for (final table in _db.allTables) {
+    for (final table in _tablesInBackup) {
       final name = table.actualTableName;
       final rows = await _db.customSelect('SELECT * FROM "$name"').get();
       tables[name] = [for (final r in rows) Map<String, Object?>.of(r.data)];
@@ -30,7 +42,7 @@ class DatabaseSnapshot {
         'O backup foi feito por uma versão mais nova do app.',
       );
     }
-    final tables = _db.allTables.toList();
+    final tables = _tablesInBackup;
     final byName = {for (final t in tables) t.actualTableName: t};
 
     // Valida tudo antes de apagar qualquer coisa.
