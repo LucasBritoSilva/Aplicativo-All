@@ -87,7 +87,11 @@ class ReminderScheduler {
     final future = await _repo.upcoming(now);
     final keep = {for (final r in future) r.id};
     for (final pendingId in await _notifications.pendingIds()) {
-      if (!keep.contains(pendingId)) await _notifications.cancel(pendingId);
+      // Só mexe nos ids dos lembretes: a rotina e as pausas usam faixas
+      // próprias, bem acima dos ids do banco.
+      if (isReminderNotificationId(pendingId) && !keep.contains(pendingId)) {
+        await _notifications.cancel(pendingId);
+      }
     }
     for (final r in future) {
       await _notifications.schedule(
@@ -99,6 +103,9 @@ class ReminderScheduler {
     }
   }
 }
+
+/// Ids de notificação usados pelos lembretes (o próprio id do banco).
+bool isReminderNotificationId(int id) => id > 0 && id < 900000000;
 
 final remindersRepositoryProvider = Provider<RemindersRepository>(
   (ref) => RemindersRepository(ref.watch(databaseProvider)),
