@@ -7,6 +7,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/dates.dart';
 import '../../../core/widgets/common.dart';
 import '../../reminders/data/reminders_repository.dart';
+import '../../routine/data/routine_sync.dart';
 
 final _permissionsOverviewProvider = FutureProvider.autoDispose<
   ({PermissionState notifications, bool exact, PermissionState microphone})
@@ -114,8 +115,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (!ok || !mounted) return;
     setState(() => _busy = 'Restaurando...');
     await service.restore(snapshot);
-    // Os lembretes restaurados precisam ser agendados de novo.
+    // Lembretes e rotina restaurados precisam ser agendados de novo.
     await ref.read(reminderSchedulerProvider).resync();
+    await ref.read(routineSyncProvider).run();
     if (mounted) showMessage(context, 'Dados restaurados.');
   });
 
@@ -145,9 +147,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const Text(
-                    'Guarda uma cópia de todos os dados na pasta privada do '
-                    'app no seu Google Drive. Nada é enviado sem você tocar '
-                    'em um dos botões abaixo.',
+                    'Guarda uma cópia dos dados na pasta privada do app no '
+                    'seu Google Drive. Nada é enviado sem você tocar em um '
+                    'dos botões abaixo. O Cofre não entra no backup: ele só '
+                    'pode ser lido neste aparelho.',
                     style: TextStyle(color: AppColors.textMuted),
                   ),
                   if (!configured && !config.isLoading) ...[
@@ -159,10 +162,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Text(
-                        'Backup ainda não configurado: falta colar o ID do '
-                        'cliente OAuth no arquivo '
-                        'assets/config/google_drive.json e gerar o APK de '
-                        'novo (veja PENDENCIAS.md, etapa b).',
+                        'Backup no Google Drive não configurado nesta versão '
+                        'do app: ele depende de um cadastro no Google Cloud '
+                        'feito por quem compila o app (veja '
+                        'docs/BACKUP_GOOGLE_DRIVE.md no repositório). Todo o '
+                        'resto funciona sem ele.',
                         style: TextStyle(fontSize: 13),
                       ),
                     ),
@@ -250,10 +254,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const Card(
             child: ListTile(
               leading: Icon(Icons.lock_outline),
-              title: Text('App Pessoal 1.0.0'),
+              title: Text('All 2.0.0'),
               subtitle: Text(
                 'Todos os dados ficam neste celular. A internet só é usada '
-                'pelo backup, quando você pede.',
+                'pelo backup no Google Drive, quando você pede, e pelos '
+                'links que você mesmo abre.',
                 style: TextStyle(color: AppColors.textMuted),
               ),
             ),
