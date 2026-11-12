@@ -1,8 +1,24 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
+
+// Chave de produção: lida de android/key.properties (fora do Git) ou das
+// variáveis de ambiente ALL_* (CI). Sem ela, o release sai assinado com a
+// chave de debug, só para teste. Ver docs/PUBLICACAO.md.
+val releaseKey = Properties().apply {
+    val file = rootProject.file("key.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+    System.getenv("ALL_STORE_FILE")?.let { setProperty("storeFile", it) }
+    System.getenv("ALL_STORE_PASSWORD")?.let { setProperty("storePassword", it) }
+    System.getenv("ALL_KEY_ALIAS")?.let { setProperty("keyAlias", it) }
+    System.getenv("ALL_KEY_PASSWORD")?.let { setProperty("keyPassword", it) }
+}
+val hasReleaseKey = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
+    .all { !releaseKey.getProperty(it).isNullOrBlank() }
 
 android {
     namespace = "io.github.lucasbritosilva.aplicativoall"
@@ -27,10 +43,24 @@ android {
         multiDexEnabled = true
     }
 
+    signingConfigs {
+        if (hasReleaseKey) {
+            create("release") {
+                storeFile = file(releaseKey.getProperty("storeFile"))
+                storePassword = releaseKey.getProperty("storePassword")
+                keyAlias = releaseKey.getProperty("keyAlias")
+                keyPassword = releaseKey.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // Uso pessoal: o release também é assinado com a chave de debug.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (hasReleaseKey) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }
