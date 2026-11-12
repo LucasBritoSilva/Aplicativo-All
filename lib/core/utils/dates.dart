@@ -113,3 +113,75 @@ String formatNumber(double value) {
   s = s.replaceFirst(RegExp(r'0+$'), '').replaceFirst(RegExp(r'\.$'), '');
   return s.replaceAll('.', ',');
 }
+
+/// Dia do calendário como número inteiro (dias desde 01/01/1970).
+///
+/// Não depende do fuso horário: 12/11/2026 é sempre o mesmo número, mesmo
+/// que o relógio do aparelho mude de fuso depois.
+int epochDay(DateTime d) =>
+    DateTime.utc(d.year, d.month, d.day).millisecondsSinceEpoch ~/
+    Duration.millisecondsPerDay;
+
+/// Meia-noite local do dia inteiro [day].
+DateTime dateFromEpochDay(int day) {
+  final u = DateTime.fromMillisecondsSinceEpoch(
+    day * Duration.millisecondsPerDay,
+    isUtc: true,
+  );
+  return DateTime(u.year, u.month, u.day);
+}
+
+/// Dia da semana de um dia inteiro (1 = segunda ... 7 = domingo).
+int weekdayOfEpochDay(int day) => ((day + 3) % 7 + 7) % 7 + 1;
+
+/// Minutos desde a meia-noite.
+int minuteOfDay(DateTime d) => d.hour * 60 + d.minute;
+
+/// Instante local: dia inteiro [day] às [minute] minutos após a meia-noite.
+DateTime dateTimeAt(int day, int minute) {
+  final d = dateFromEpochDay(day);
+  return DateTime(d.year, d.month, d.day, minute ~/ 60, minute % 60);
+}
+
+/// 14:05, a partir de minutos desde a meia-noite.
+String formatMinute(int minute) => '${_two(minute ~/ 60)}:${_two(minute % 60)}';
+
+/// 11/11, sem o ano.
+String formatDayMonthNumeric(DateTime d) => '${_two(d.day)}/${_two(d.month)}';
+
+/// Duração por extenso: "1h 05min", "25min" ou "40s".
+String formatDuration(int seconds) {
+  if (seconds < 60) return '${seconds < 0 ? 0 : seconds}s';
+  final h = seconds ~/ 3600;
+  final m = (seconds % 3600) ~/ 60;
+  if (h == 0) return '${m}min';
+  return m == 0 ? '${h}h' : '${h}h ${_two(m)}min';
+}
+
+/// Mostrador de cronômetro: "05:09" ou "1:05:09".
+String formatClock(int seconds) {
+  final s = seconds < 0 ? 0 : seconds;
+  final h = s ~/ 3600;
+  final m = (s % 3600) ~/ 60;
+  final sec = s % 60;
+  return h > 0 ? '$h:${_two(m)}:${_two(sec)}' : '${_two(m)}:${_two(sec)}';
+}
+
+/// "12 de novembro de 2026".
+String formatLongDate(DateTime d) =>
+    '${d.day} de ${_monthsLong[d.month - 1]} de ${d.year}';
+
+const _monthsLong = [
+  'janeiro',
+  'fevereiro',
+  'março',
+  'abril',
+  'maio',
+  'junho',
+  'julho',
+  'agosto',
+  'setembro',
+  'outubro',
+  'novembro',
+  'dezembro',
+];
