@@ -68,39 +68,44 @@ void main() {
         );
     await db
         .into(db.notes)
-        .insert(NotesCompanion.insert(body: 'Ideia', fromVoice: const Value(true)));
+        .insert(
+          NotesCompanion.insert(body: 'Ideia', fromVoice: const Value(true)),
+        );
   }
 
-  test('exportar e restaurar reproduz os dados e substitui os antigos', () async {
-    await fill(source);
-    // O destino tem dados que devem sumir após a restauração.
-    await target
-        .into(target.notes)
-        .insert(NotesCompanion.insert(body: 'vai sumir'));
+  test(
+    'exportar e restaurar reproduz os dados e substitui os antigos',
+    () async {
+      await fill(source);
+      // O destino tem dados que devem sumir após a restauração.
+      await target
+          .into(target.notes)
+          .insert(NotesCompanion.insert(body: 'vai sumir'));
 
-    final json = (await DatabaseSnapshot(source).export()).encode();
-    await DatabaseSnapshot(target).restore(BackupSnapshot.decode(json));
+      final json = (await DatabaseSnapshot(source).export()).encode();
+      await DatabaseSnapshot(target).restore(BackupSnapshot.decode(json));
 
-    final notes = await target.select(target.notes).get();
-    expect(notes.map((n) => n.body), ['Ideia']);
-    expect(notes.single.fromVoice, isTrue);
+      final notes = await target.select(target.notes).get();
+      expect(notes.map((n) => n.body), ['Ideia']);
+      expect(notes.single.fromVoice, isTrue);
 
-    final item = await target.select(target.shoppingItems).getSingle();
-    expect(item.name, 'Tomate');
-    expect(item.section, ShoppingSection.hortifruti);
-    expect(item.quantity, '1 kg');
+      final item = await target.select(target.shoppingItems).getSingle();
+      expect(item.name, 'Tomate');
+      expect(item.section, ShoppingSection.hortifruti);
+      expect(item.quantity, '1 kg');
 
-    final task = await target.select(target.tasks).getSingle();
-    expect(task.priority, TaskPriority.alta);
-    expect(task.dueDate, DateTime(2026, 11, 20));
+      final task = await target.select(target.tasks).getSingle();
+      expect(task.priority, TaskPriority.alta);
+      expect(task.dueDate, DateTime(2026, 11, 20));
 
-    final checks = await target.select(target.habitChecks).get();
-    expect(checks.single.day, DateTime(2026, 11, 10));
+      final checks = await target.select(target.habitChecks).get();
+      expect(checks.single.day, DateTime(2026, 11, 10));
 
-    final goal = await target.select(target.goals).getSingle();
-    expect(goal.currentValue, 2.5);
-    expect(goal.targetValue, 20);
-  });
+      final goal = await target.select(target.goals).getSingle();
+      expect(goal.currentValue, 2.5);
+      expect(goal.targetValue, 20);
+    },
+  );
 
   test('backup inválido não apaga nada do celular', () async {
     await fill(target);
@@ -134,8 +139,45 @@ void main() {
         ],
       },
     );
-    await expectLater(DatabaseSnapshot(target).restore(broken), throwsA(anything));
+    await expectLater(
+      DatabaseSnapshot(target).restore(broken),
+      throwsA(anything),
+    );
     expect(await target.select(target.notes).get(), hasLength(1));
     expect(await target.select(target.habits).get(), hasLength(1));
+  });
+
+  test('o cofre não sai no backup e não é apagado ao restaurar', () async {
+    await source
+        .into(source.vaultEntries)
+        .insert(VaultEntriesCompanion.insert(payload: 'cifrado-origem'));
+    await target
+        .into(target.vaultEntries)
+        .insert(VaultEntriesCompanion.insert(payload: 'cifrado-local'));
+
+    final snapshot = await DatabaseSnapshot(source).export();
+    expect(snapshot.tables.containsKey('vault_entries'), isFalse);
+
+    await DatabaseSnapshot(target).restore(snapshot);
+    final vault = await target.select(target.vaultEntries).get();
+    expect(vault.single.payload, 'cifrado-local');
+  });
+
+  test('tabelas novas também vão e voltam no backup', () async {
+    await source
+        .into(source.dayCounters)
+        .insert(DayCountersCompanion.insert(title: 'Formatura', day: 21000));
+    await source
+        .into(source.knowledgeItems)
+        .insert(
+          KnowledgeItemsCompanion.insert(title: 'Dart', stars: const Value(4)),
+        );
+    final json = (await DatabaseSnapshot(source).export()).encode();
+    await DatabaseSnapshot(target).restore(BackupSnapshot.decode(json));
+    expect(
+      (await target.select(target.dayCounters).getSingle()).title,
+      'Formatura',
+    );
+    expect((await target.select(target.knowledgeItems).getSingle()).stars, 4);
   });
 }
