@@ -48,7 +48,7 @@ class DriveBackupService {
     if (!config.isConfigured) {
       throw const BackupException(
         'O backup ainda não foi configurado. Falta colar o ID do cliente '
-        'OAuth no arquivo de configuração (veja PENDENCIAS.md, etapa b).',
+        'OAuth no arquivo de configuração (veja docs/BACKUP_GOOGLE_DRIVE.md).',
       );
     }
     if (!_initialized) {
@@ -184,11 +184,11 @@ class DriveBackupService {
       GoogleSignInExceptionCode.canceled =>
         'Acesso ao Google cancelado. Se você escolheu a conta e mesmo assim '
             'apareceu esta mensagem, confira a configuração do Google Cloud '
-            '(nome do pacote e SHA-1) em PENDENCIAS.md.',
+            '(nome do pacote e SHA-1) em docs/BACKUP_GOOGLE_DRIVE.md.',
       GoogleSignInExceptionCode.clientConfigurationError ||
       GoogleSignInExceptionCode.providerConfigurationError =>
         'Configuração do Google incompleta. Confira o cliente OAuth Android '
-            '(nome do pacote e SHA-1) em PENDENCIAS.md.',
+            '(nome do pacote e SHA-1) em docs/BACKUP_GOOGLE_DRIVE.md.',
       GoogleSignInExceptionCode.uiUnavailable =>
         'Não foi possível abrir a tela de login do Google.',
       _ =>

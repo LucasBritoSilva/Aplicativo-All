@@ -1,4 +1,4 @@
 {
-  "_instrucoes": "Cole entre as aspas de android_client_id o ID do cliente OAuth do tipo Android criado no Google Cloud (termina com .apps.googleusercontent.com). Depois gere o APK de novo. Passo a passo em PENDENCIAS.md, etapa b.",
+  "_instrucoes": "Backup no Google Drive (opcional). Cole em android_client_id o ID do cliente OAuth do tipo Android criado no Google Cloud (termina com .apps.googleusercontent.com) e gere o APK de novo. Passo a passo em docs/BACKUP_GOOGLE_DRIVE.md.",
   "android_client_id": ""
 }
