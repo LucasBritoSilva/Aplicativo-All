@@ -1,4 +1,5 @@
-# Publica a versão quando uma tag vX.Y.Z é enviada.
+# Publica o BrutAll quando uma tag vX.Y.Z é enviada (versão única: as
+# Releases e tags anteriores são removidas antes).
 #
 # O APK de produção é assinado no computador do proprietário (a chave não
 # fica no GitHub) e enviado ao ramo "distribuicao", na pasta da versão.
@@ -30,6 +31,24 @@ jobs:
           cd "$TAG"
           sha256sum -c SHA256SUMS.txt
           ls -la
+
+      # Versão única: antes de publicar, remove qualquer outra Release
+      # (inclusive rascunhos) e as tags que não são a desta publicação.
+      - name: Remover Releases e tags antigas
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          for id in $(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate --jq '.[].id'); do
+            echo "Removendo a Release $id"
+            gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/$id"
+          done
+          for t in $(gh api "repos/$GITHUB_REPOSITORY/tags" --paginate --jq '.[].name'); do
+            if [ "$t" != "$TAG" ]; then
+              echo "Removendo a tag $t"
+              gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/tags/$t"
+            fi
+          done
 
       - name: Criar a Release
         env:
