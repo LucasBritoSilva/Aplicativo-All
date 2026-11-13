@@ -21,9 +21,8 @@
 
 ## Backup e recuperação
 
-- O cofre **não entra** no backup do Google Drive e o backup automático do
-  Android está desligado. Isso é proposital: a chave fica presa a este
-  aparelho.
+- O BrutAll não tem backup e o backup automático do Android está
+  desligado. Isso é proposital: a chave fica presa a este aparelho.
 - **Consequência:** se o app for desinstalado, os dados do app forem
   apagados, o celular for formatado ou trocado, **o conteúdo do cofre é
   perdido**. Guarde em outro lugar seguro o que não pode ser perdido.
