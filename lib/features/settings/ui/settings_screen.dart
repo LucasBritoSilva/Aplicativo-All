@@ -1,24 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/backup/drive_backup_service.dart';
+import '../../../core/navigation/app_modules.dart';
+import '../../../core/navigation/module_prefs.dart';
 import '../../../core/permissions/permission_service.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/dates.dart';
 import '../../../core/widgets/common.dart';
-import '../../reminders/data/reminders_repository.dart';
-import '../../routine/data/routine_sync.dart';
 
-final _permissionsOverviewProvider = FutureProvider.autoDispose<
-  ({PermissionState notifications, bool exact, PermissionState microphone})
->((ref) async {
-  final p = ref.watch(permissionServiceProvider);
-  return (
-    notifications: await p.notificationStatus(),
-    exact: await p.exactAlarmsAllowed(),
-    microphone: await p.microphoneStatus(),
-  );
-});
+final _permissionsOverviewProvider =
+    FutureProvider.autoDispose<
+      ({PermissionState notifications, bool exact, PermissionState microphone})
+    >((ref) async {
+      final p = ref.watch(permissionServiceProvider);
+      return (
+        notifications: await p.notificationStatus(),
+        exact: await p.exactAlarmsAllowed(),
+        microphone: await p.microphoneStatus(),
+      );
+    });
+
+/// Texto do aviso de armazenamento (exatamente como pedido).
+const dataStorageWarning =
+    'Atenção: os dados deste aplicativo são armazenados somente no '
+    'dispositivo. Ao desinstalar o BrutAll, suas informações serão perdidas. '
+    'O aplicativo não possui backup nem recuperação de dados.';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -29,11 +34,11 @@ class SettingsScreen extends ConsumerStatefulWidget {
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   late final AppLifecycleListener _lifecycle;
-  String? _busy;
 
   @override
   void initState() {
     super.initState();
+    // Ao voltar das configurações do Android, confere as permissões de novo.
     _lifecycle = AppLifecycleListener(
       onResume: () => ref.invalidate(_permissionsOverviewProvider),
     );
@@ -45,99 +50,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     super.dispose();
   }
 
-  Future<void> _run(String label, Future<void> Function() action) async {
-    setState(() => _busy = label);
-    try {
-      await action();
-    } on BackupException catch (e) {
-      if (mounted) _showError(e.message);
-    } catch (e) {
-      if (mounted) _showError('Algo deu errado: $e');
-    } finally {
-      if (mounted) setState(() => _busy = null);
-    }
-  }
-
-  void _showError(String message) {
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Não deu certo'),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _when(DateTime d) => '${formatDate(d)} às ${formatTime(d)}';
-
-  Future<void> _backup() => _run('Enviando backup...', () async {
-    final service = ref.read(driveBackupServiceProvider);
-    final existing = await service.findBackup();
-    if (existing != null && mounted) {
-      final when = existing.modifiedTime == null
-          ? ''
-          : ' (de ${_when(existing.modifiedTime!)})';
-      final ok = await confirm(
-        context,
-        title: 'Substituir backup?',
-        message:
-            'Já existe um backup no seu Google Drive$when. Ele será '
-            'substituído pelos dados atuais deste celular.',
-        confirmLabel: 'Substituir',
-      );
-      if (!ok) return;
-    }
-    final at = await service.backup();
-    if (mounted) showMessage(context, 'Backup feito em ${_when(at)}.');
-  });
-
-  Future<void> _restore() => _run('Buscando backup...', () async {
-    final service = ref.read(driveBackupServiceProvider);
-    final snapshot = await service.download();
-    if (!mounted) return;
-    final ok = await confirm(
-      context,
-      title: 'Restaurar backup?',
-      message:
-          'Backup de ${_when(snapshot.exportedAt)} com '
-          '${snapshot.totalRows} registros.\n\n'
-          'TODOS os dados atuais deste celular serão apagados e trocados '
-          'pelos dados do backup. Isso não pode ser desfeito.',
-      confirmLabel: 'Restaurar',
-      destructive: true,
-    );
-    if (!ok || !mounted) return;
-    setState(() => _busy = 'Restaurando...');
-    await service.restore(snapshot);
-    // Lembretes e rotina restaurados precisam ser agendados de novo.
-    await ref.read(reminderSchedulerProvider).resync();
-    await ref.read(routineSyncProvider).run();
-    if (mounted) showMessage(context, 'Dados restaurados.');
-  });
-
   @override
   Widget build(BuildContext context) {
-    final config = ref.watch(backupConfigProvider);
     final perms = ref.watch(_permissionsOverviewProvider);
-    final configured = config.maybeWhen(
-      data: (c) => c.isConfigured,
-      orElse: () => false,
-    );
-    final busy = _busy != null;
+    final accent = ref.watch(accentColorProvider);
+    final hidden = ref.watch(hiddenModulesProvider);
+    final prefs = ref.read(modulePrefsProvider);
+    final hiddenModules = [
+      for (final m in appModules)
+        if (hidden.contains(m.id)) m,
+    ];
 
     return Scaffold(
       appBar: AppBar(title: const Text('Configurações')),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
         children: [
+          // ---- Aparência ----
           const SectionLabel(
-            'Backup no Google Drive',
+            'Cor do aplicativo',
             padding: EdgeInsets.fromLTRB(4, 8, 4, 8),
           ),
           Card(
@@ -147,66 +78,117 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const Text(
-                    'Guarda uma cópia dos dados na pasta privada do app no '
-                    'seu Google Drive. Nada é enviado sem você tocar em um '
-                    'dos botões abaixo. O Cofre não entra no backup: ele só '
-                    'pode ser lido neste aparelho.',
+                    'Escolha a cor de destaque. As cores de aviso (erro, '
+                    'sucesso) não mudam.',
                     style: TextStyle(color: AppColors.textMuted),
                   ),
-                  if (!configured && !config.isLoading) ...[
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.10),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Text(
-                        'Backup no Google Drive não configurado nesta versão '
-                        'do app: ele depende de um cadastro no Google Cloud '
-                        'feito por quem compila o app (veja '
-                        'docs/BACKUP_GOOGLE_DRIVE.md no repositório). Todo o '
-                        'resto funciona sem ele.',
-                        style: TextStyle(fontSize: 13),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 16),
-                  if (busy) ...[
-                    const LinearProgressIndicator(),
-                    const SizedBox(height: 8),
-                    Text(
-                      _busy!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: AppColors.textMuted),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                  FilledButton.icon(
-                    onPressed: configured && !busy ? _backup : null,
-                    icon: const Icon(Icons.cloud_upload_outlined),
-                    label: const Text('Fazer backup'),
+                  const SizedBox(height: 14),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      for (final (name, color) in accentChoices)
+                        _ColorDot(
+                          name: name,
+                          color: color,
+                          selected: color.toARGB32() == accent.toARGB32(),
+                          onTap: () => prefs.setAccent(
+                            color.toARGB32() ==
+                                    AppColors.defaultPrimary.toARGB32()
+                                ? null
+                                : color,
+                          ),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: 8),
-                  OutlinedButton.icon(
-                    onPressed: configured && !busy ? _restore : null,
-                    icon: const Icon(Icons.cloud_download_outlined),
-                    label: const Text('Restaurar'),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed:
+                          accent.toARGB32() ==
+                              AppColors.defaultPrimary.toARGB32()
+                          ? null
+                          : () => prefs.setAccent(null),
+                      icon: const Icon(Icons.restart_alt),
+                      label: const Text('Restaurar a cor original'),
+                    ),
                   ),
                 ],
               ),
             ),
           ),
+
+          // ---- Módulos ----
+          const SectionLabel(
+            'Módulos',
+            padding: EdgeInsets.fromLTRB(4, 24, 4, 8),
+          ),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.dashboard_customize_outlined),
+              title: const Text('Fixar e ocultar módulos'),
+              subtitle: const Text(
+                'Escolha o que fica fixado na tela inicial e o que não aparece',
+                style: TextStyle(color: AppColors.textMuted),
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const ModulesManageScreen(),
+                ),
+              ),
+            ),
+          ),
+          SectionLabel(
+            'Funcionalidades ocultadas',
+            padding: const EdgeInsets.fromLTRB(4, 24, 0, 8),
+            trailing: hiddenModules.length > 1
+                ? TextButton(
+                    onPressed: prefs.showAll,
+                    child: const Text('Restaurar todas'),
+                  )
+                : null,
+          ),
+          Card(
+            child: hiddenModules.isEmpty
+                ? const ListTile(
+                    leading: Icon(Icons.visibility_outlined),
+                    title: Text('Nenhuma funcionalidade oculta'),
+                    subtitle: Text(
+                      'Para ocultar, toque e segure um módulo no menu ou na '
+                      'tela inicial.',
+                      style: TextStyle(color: AppColors.textMuted),
+                    ),
+                  )
+                : Column(
+                    children: [
+                      for (final m in hiddenModules)
+                        ListTile(
+                          leading: Icon(m.icon),
+                          title: Text(m.title),
+                          subtitle: const Text(
+                            'Oculto · os dados continuam guardados',
+                            style: TextStyle(color: AppColors.textMuted),
+                          ),
+                          trailing: TextButton(
+                            onPressed: () => prefs.show(m.id),
+                            child: const Text('Restaurar'),
+                          ),
+                        ),
+                    ],
+                  ),
+          ),
+
+          // ---- Permissões ----
           const SectionLabel(
             'Permissões',
             padding: EdgeInsets.fromLTRB(4, 24, 4, 8),
           ),
           Card(
             child: perms.when(
-              loading: () => const Padding(
-                padding: EdgeInsets.all(24),
-                child: Loading(),
-              ),
+              loading: () =>
+                  const Padding(padding: EdgeInsets.all(24), child: Loading()),
               error: (e, _) => ErrorText(e),
               data: (p) => Column(
                 children: [
@@ -214,6 +196,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     icon: Icons.notifications_none,
                     title: 'Notificações',
                     granted: p.notifications == PermissionState.granted,
+                    deniedText: 'Não permitidas: rotina e lembretes não avisam',
                     onFix: () async {
                       final s = ref.read(permissionServiceProvider);
                       final r = await s.requestNotifications();
@@ -225,7 +208,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     icon: Icons.alarm,
                     title: 'Alarmes exatos',
                     granted: p.exact,
-                    deniedText: 'Desativados: lembretes podem atrasar',
+                    deniedText:
+                        'Desativados: os avisos podem atrasar alguns minutos',
                     onFix: () async {
                       final opened = await ref
                           .read(permissionServiceProvider)
@@ -255,20 +239,103 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ),
           ),
-          const SectionLabel('Sobre', padding: EdgeInsets.fromLTRB(4, 24, 4, 8)),
+
+          // ---- Armazenamento ----
+          const SectionLabel(
+            'Armazenamento de dados',
+            padding: EdgeInsets.fromLTRB(4, 24, 4, 8),
+          ),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.warning.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: AppColors.warning.withValues(alpha: 0.45),
+              ),
+            ),
+            child: const Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.warning_amber_rounded, color: AppColors.warning),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    dataStorageWarning,
+                    style: TextStyle(height: 1.4),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // ---- Sobre ----
+          const SectionLabel(
+            'Sobre',
+            padding: EdgeInsets.fromLTRB(4, 24, 4, 8),
+          ),
           const Card(
             child: ListTile(
               leading: Icon(Icons.lock_outline),
-              title: Text('All 2.0.0'),
+              title: Text('BrutAll'),
               subtitle: Text(
-                'Todos os dados ficam neste celular. A internet só é usada '
-                'pelo backup no Google Drive, quando você pede, e pelos '
-                'links que você mesmo abre.',
+                'Organização pessoal em um só lugar. Funciona sem internet e '
+                'não envia seus dados para nenhum serviço.',
                 style: TextStyle(color: AppColors.textMuted),
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ColorDot extends StatelessWidget {
+  const _ColorDot({
+    required this.name,
+    required this.color,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String name;
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: 'Cor $name',
+      child: Tooltip(
+        message: name,
+        child: InkResponse(
+          onTap: onTap,
+          radius: 28,
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: selected ? AppColors.text : Colors.transparent,
+                width: 3,
+              ),
+            ),
+            child: selected
+                ? Icon(
+                    Icons.check,
+                    color: color.computeLuminance() > 0.35
+                        ? Colors.black
+                        : Colors.white,
+                  )
+                : null,
+          ),
+        ),
       ),
     );
   }
@@ -302,8 +369,91 @@ class _PermissionTile extends StatelessWidget {
         ),
       ),
       trailing: granted
-          ? const Icon(Icons.check, color: AppColors.primary)
+          ? Icon(Icons.check, color: AppColors.primary)
           : TextButton(onPressed: onFix, child: const Text('Permitir')),
+    );
+  }
+}
+
+/// Todos os módulos, com as opções de fixar e de mostrar/ocultar.
+class ModulesManageScreen extends ConsumerWidget {
+  const ModulesManageScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hidden = ref.watch(hiddenModulesProvider);
+    final pinned = ref.watch(pinnedModulesProvider);
+    final prefs = ref.read(modulePrefsProvider);
+    return Scaffold(
+      appBar: AppBar(title: const Text('Fixar e ocultar módulos')),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(4, 8, 4, 0),
+            child: Text(
+              'Fixados aparecem primeiro na tela inicial. Ocultos somem do '
+              'menu e da tela inicial, sem perder os dados.',
+              style: TextStyle(color: AppColors.textMuted),
+            ),
+          ),
+          for (final category in ModuleCategory.values) ...[
+            SectionLabel(
+              category.label,
+              padding: const EdgeInsets.fromLTRB(4, 20, 4, 8),
+            ),
+            Card(
+              child: Column(
+                children: [
+                  for (final m in modulesOf(category))
+                    ListTile(
+                      leading: Icon(
+                        m.icon,
+                        color: hidden.contains(m.id)
+                            ? AppColors.textFaint
+                            : null,
+                      ),
+                      title: Text(
+                        m.title,
+                        style: hidden.contains(m.id)
+                            ? const TextStyle(color: AppColors.textFaint)
+                            : null,
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            tooltip: pinned.contains(m.id)
+                                ? 'Desafixar'
+                                : 'Fixar na tela inicial',
+                            icon: Icon(
+                              pinned.contains(m.id)
+                                  ? Icons.push_pin
+                                  : Icons.push_pin_outlined,
+                              color: pinned.contains(m.id)
+                                  ? AppColors.primary
+                                  : null,
+                            ),
+                            onPressed: hidden.contains(m.id)
+                                ? null
+                                : () => pinned.contains(m.id)
+                                      ? prefs.unpin(m.id)
+                                      : prefs.pin(m.id),
+                          ),
+                          Switch(
+                            value: !hidden.contains(m.id),
+                            onChanged: (visible) =>
+                                visible ? prefs.show(m.id) : prefs.hide(m.id),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
