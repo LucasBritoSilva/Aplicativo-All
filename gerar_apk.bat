@@ -1,7 +1,7 @@
 @echo off
 setlocal
 rem ==================================================================
-rem  Gera o APK do All e copia para ..\entrega\All.apk
+rem  Gera o APK do BrutAll e copia para ..\entrega\BrutAll.apk
 rem
 rem  Se android\key.properties existir, o APK sai assinado com a chave
 rem  de producao (ver docs\PUBLICACAO.md); senao, com a chave de debug.
@@ -56,11 +56,11 @@ set "ERR=%ERRORLEVEL%"
 
 if "%ERR%"=="0" (
   if not exist "%DRV%\entrega" mkdir "%DRV%\entrega"
-  copy /Y "build\app\outputs\flutter-apk\app-release.apk" "%DRV%\entrega\All.apk" >nul
+  copy /Y "build\app\outputs\flutter-apk\app-release.apk" "%DRV%\entrega\BrutAll.apk" >nul
   echo.
   echo ==============================================================
   echo  Pronto! APK gerado em:
-  echo  %ROOT%\entrega\All.apk
+  echo  %ROOT%\entrega\BrutAll.apk
   echo ==============================================================
 ) else (
   echo.

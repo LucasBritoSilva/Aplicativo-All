@@ -1,7 +1,7 @@
 @echo off
 setlocal
 rem ==================================================================
-rem  Instala o ..\entrega\All.apk no celular conectado
+rem  Instala o ..\entrega\BrutAll.apk no celular conectado
 rem  por cabo USB (com a Depuracao USB ativada). Gere antes com gerar_apk.bat.
 rem ==================================================================
 
@@ -15,7 +15,7 @@ if not exist "%ADB%" (
 )
 
 pushd "%~dp0..\entrega"
-if not exist "All.apk" (
+if not exist "BrutAll.apk" (
   echo O APK ainda nao existe na pasta entrega.
   echo Rode primeiro o gerar_apk.bat.
   popd
@@ -30,13 +30,13 @@ echo Se aparecer "unauthorized", olhe o celular e toque em Permitir.
 echo Se nao aparecer nenhum aparelho, confira o cabo e a Depuracao USB.
 echo.
 echo === Instalando (o celular pode pedir confirmacao) ===
-"%ADB%" install -r "All.apk"
+"%ADB%" install -r "BrutAll.apk"
 set "ERR=%ERRORLEVEL%"
 popd
 
 echo.
 if "%ERR%"=="0" (
-  echo Pronto! Procure o icone "All" no celular.
+  echo Pronto! Procure o icone "BrutAll" no celular.
 ) else (
   echo A instalacao NAO deu certo. Veja as mensagens acima.
 )
