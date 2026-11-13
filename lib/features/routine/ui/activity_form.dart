@@ -56,7 +56,7 @@ class _ActivityFormState extends ConsumerState<_ActivityForm> {
   }
 
   Future<void> _pickTime({required bool start}) async {
-    final current = start ? _start : _end;
+    final current = (start ? _start : _end) % minutesPerDay;
     final picked = await pickTime(
       context,
       initial: TimeOfDay(hour: current ~/ 60, minute: current % 60),
@@ -65,12 +65,13 @@ class _ActivityFormState extends ConsumerState<_ActivityForm> {
     final minute = picked.hour * 60 + picked.minute;
     setState(() {
       if (start) {
-        // Mantém a duração ao mudar o início.
+        // Mantém a duração ao mudar o início (pode passar da meia-noite).
         final duration = _end - _start;
         _start = minute;
-        if (duration > 0 && minute + duration <= 1439) _end = minute + duration;
+        if (duration > 0 && duration < minutesPerDay) _end = minute + duration;
       } else {
-        _end = minute;
+        // Término antes do início: termina no dia seguinte.
+        _end = normalizeEnd(_start, minute);
       }
     });
   }
@@ -100,7 +101,9 @@ class _ActivityFormState extends ConsumerState<_ActivityForm> {
 
     try {
       // Avisa se o novo planejamento se sobrepõe a outra atividade.
-      final others = await ref.read(routineRepositoryProvider).activeActivities();
+      final others = await ref
+          .read(routineRepositoryProvider)
+          .activeActivities();
       final conflicts = [
         for (final o in others)
           if (o.id != widget.activity?.id &&
@@ -123,7 +126,7 @@ class _ActivityFormState extends ConsumerState<_ActivityForm> {
           title: 'Conflito de horário',
           message:
               'Esse horário se sobrepõe a:\n\n'
-              '${conflicts.map((c) => '• ${c.name}, ${formatMinute(c.startMinute)}–${formatMinute(c.endMinute)}${c.kind == ActivityKind.fixed ? ' (compromisso fixo)' : ''}').join('\n')}\n\n'
+              '${conflicts.map((c) => '• ${c.name}, ${formatSpan(c.startMinute, c.endMinute)}${c.kind == ActivityKind.fixed ? ' (compromisso fixo)' : ''}').join('\n')}\n\n'
               'Deseja salvar mesmo assim?',
           confirmLabel: 'Salvar',
         );
@@ -230,11 +233,19 @@ class _ActivityFormState extends ConsumerState<_ActivityForm> {
             Expanded(
               child: PickerField(
                 icon: Icons.schedule,
-                label: 'Fim ${formatMinute(_end)}',
+                label: crossesMidnight(_end)
+                    ? 'Fim ${formatMinute(_end)} (dia seguinte)'
+                    : 'Fim ${formatMinute(_end)}',
                 onTap: () => _pickTime(start: false),
               ),
             ),
           ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Duração planejada: ${formatDuration((_end - _start) * 60)}'
+          '${crossesMidnight(_end) ? ' · termina no dia seguinte' : ''}',
+          style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
         ),
         const SizedBox(height: 16),
         SegmentedButton<bool>(
@@ -257,7 +268,9 @@ class _ActivityFormState extends ConsumerState<_ActivityForm> {
                   label: Text(_weekdayChips[day - 1]),
                   selected: maskHasWeekday(_mask, day),
                   onSelected: (on) => setState(() {
-                    _mask = on ? _mask | (1 << (day - 1)) : _mask & ~(1 << (day - 1));
+                    _mask = on
+                        ? _mask | (1 << (day - 1))
+                        : _mask & ~(1 << (day - 1));
                   }),
                 ),
             ],
