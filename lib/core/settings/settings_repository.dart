@@ -27,6 +27,15 @@ abstract final class SettingKeys {
 
   /// Se o monitor de uso de apps está ligado.
   static const appLimitsMonitor = 'app_limits_monitor';
+
+  /// Módulos ocultados (JSON com a lista de ids).
+  static const hiddenModules = 'hidden_modules';
+
+  /// Módulos fixados na tela inicial (JSON com a lista de ids).
+  static const pinnedModules = 'pinned_modules';
+
+  /// Cor de destaque escolhida (ARGB em número).
+  static const accentColor = 'accent_color';
 }
 
 /// Lê e grava preferências simples (texto) no banco local.
@@ -41,11 +50,10 @@ class SettingsRepository {
     return row?.content;
   }
 
-  Stream<String?> watch(String name) => (_db.select(
-    _db.appSettings,
-  )..where((s) => s.name.equals(name))).watchSingleOrNull().map(
-    (row) => row?.content,
-  );
+  Stream<String?> watch(String name) =>
+      (_db.select(_db.appSettings)..where((s) => s.name.equals(name)))
+          .watchSingleOrNull()
+          .map((row) => row?.content);
 
   Future<void> write(String name, String content) => _db
       .into(_db.appSettings)
