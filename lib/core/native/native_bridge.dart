@@ -89,6 +89,28 @@ class NativeBridge {
   Future<void> setSecureScreen(bool enabled) =>
       _call<void>('setSecure', {'enabled': enabled});
 
+  // ---- Imagens das notas ----
+
+  /// Abre o seletor de fotos e devolve os caminhos das cópias guardadas na
+  /// pasta privada do app (lista vazia se o usuário cancelar).
+  Future<List<String>> pickImages() async {
+    try {
+      final paths = await _channel.invokeListMethod<String>('pickImages');
+      return paths ?? const [];
+    } on MissingPluginException {
+      return const [];
+    } on PlatformException catch (e) {
+      debugPrint('Falha ao escolher imagens: ${e.code}');
+      return const [];
+    }
+  }
+
+  /// Apaga imagens da pasta privada do app (só as das notas).
+  Future<void> deleteFiles(List<String> paths) async {
+    if (paths.isEmpty) return;
+    await _call<void>('deleteFiles', {'paths': paths});
+  }
+
   // ---- Alarmes exatos ----
 
   /// Se o Android deixa o app agendar alarmes no minuto exato.

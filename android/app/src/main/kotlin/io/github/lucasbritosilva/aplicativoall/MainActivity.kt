@@ -35,12 +35,15 @@ class MainActivity : FlutterActivity() {
     companion object {
         private const val CHANNEL = "aplicativo_all/native"
         private const val REQUEST_DEVICE_CREDENTIAL = 4101
+        private const val REQUEST_PICK_IMAGES = 4102
+        private const val NOTE_IMAGES_DIR = "note_images"
     }
 
     private val vault by lazy { VaultCrypto(applicationContext) }
     private val background = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
     private var pendingUnlock: MethodChannel.Result? = null
+    private var pendingPick: MethodChannel.Result? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -85,6 +88,15 @@ class MainActivity : FlutterActivity() {
             "vaultDecryptAll" -> {
                 val payloads = call.argument<List<String>>("payloads") ?: emptyList()
                 result.success(payloads.map { vault.decrypt(it) })
+            }
+
+            "pickImages" -> pickImages(result)
+            "deleteFiles" -> {
+                val paths = call.argument<List<String>>("paths") ?: emptyList()
+                background.execute {
+                    for (path in paths) deleteNoteImage(path)
+                    main.post { result.success(null) }
+                }
             }
 
             "canScheduleExactAlarms" -> result.success(canScheduleExactAlarms())
@@ -287,14 +299,101 @@ class MainActivity : FlutterActivity() {
         startActivityForResult(intent, REQUEST_DEVICE_CREDENTIAL)
     }
 
-    @Deprecated("Usado só no Android 8 ou anterior, para confirmar o bloqueio de tela.")
+    @Deprecated("Usado para o seletor de imagens e, no Android 8 ou anterior, para o bloqueio de tela.")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode == REQUEST_PICK_IMAGES) {
+            onImagesPicked(if (resultCode == RESULT_OK) data else null)
+            return
+        }
         if (requestCode == REQUEST_DEVICE_CREDENTIAL) {
             finishUnlock(if (resultCode == RESULT_OK) vault.afterAuthentication() else "canceled")
             return
         }
         @Suppress("DEPRECATION")
         super.onActivityResult(requestCode, resultCode, data)
+    }
+
+    // ---- Imagens das notas ----
+
+    /**
+     * Abre o seletor de fotos do Android (no 13+ o seletor do sistema, que
+     * não exige permissão de armazenamento). As imagens escolhidas são
+     * copiadas para a pasta privada do app; devolve os caminhos das cópias.
+     */
+    private fun pickImages(result: MethodChannel.Result) {
+        if (pendingPick != null) {
+            result.success(emptyList<String>())
+            return
+        }
+        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            Intent(android.provider.MediaStore.ACTION_PICK_IMAGES)
+                .setType("image/*")
+                .putExtra(android.provider.MediaStore.EXTRA_PICK_IMAGES_MAX, 10)
+        } else {
+            Intent(Intent.ACTION_GET_CONTENT)
+                .setType("image/*")
+                .addCategory(Intent.CATEGORY_OPENABLE)
+                .putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+        }
+        pendingPick = result
+        try {
+            @Suppress("DEPRECATION")
+            startActivityForResult(intent, REQUEST_PICK_IMAGES)
+        } catch (e: ActivityNotFoundException) {
+            pendingPick = null
+            result.success(emptyList<String>())
+        }
+    }
+
+    private fun onImagesPicked(data: Intent?) {
+        val r = pendingPick ?: return
+        pendingPick = null
+        val uris = ArrayList<Uri>()
+        val clip = data?.clipData
+        if (clip != null) {
+            for (i in 0 until clip.itemCount) clip.getItemAt(i).uri?.let(uris::add)
+        } else {
+            data?.data?.let(uris::add)
+        }
+        if (uris.isEmpty()) {
+            r.success(emptyList<String>())
+            return
+        }
+        background.execute {
+            val paths = uris.mapNotNull { copyNoteImage(it) }
+            main.post { r.success(paths) }
+        }
+    }
+
+    private fun noteImagesDir(): java.io.File =
+        java.io.File(filesDir, NOTE_IMAGES_DIR).apply { mkdirs() }
+
+    private fun copyNoteImage(uri: Uri): String? = try {
+        val type = contentResolver.getType(uri) ?: "image/jpeg"
+        val ext = when {
+            type.endsWith("png") -> "png"
+            type.endsWith("webp") -> "webp"
+            type.endsWith("gif") -> "gif"
+            else -> "jpg"
+        }
+        val file = java.io.File(noteImagesDir(), "${java.util.UUID.randomUUID()}.$ext")
+        contentResolver.openInputStream(uri)?.use { input ->
+            file.outputStream().use { output -> input.copyTo(output) }
+        } ?: return null
+        file.absolutePath
+    } catch (e: Exception) {
+        null
+    }
+
+    /** Só apaga arquivos dentro da pasta de imagens das notas. */
+    private fun deleteNoteImage(path: String) {
+        try {
+            val dir = noteImagesDir().canonicalFile
+            val file = java.io.File(path).canonicalFile
+            if (file.parentFile == dir) file.delete()
+        } catch (e: Exception) {
+            // Arquivo já apagado ou caminho inválido.
+        }
     }
 
     // ---- Apps instalados ----
