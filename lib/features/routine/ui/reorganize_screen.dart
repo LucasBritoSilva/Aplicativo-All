@@ -64,15 +64,27 @@ class _ReorganizeScreenState extends ConsumerState<ReorganizeScreen> {
       title: occ.name,
       submitLabel: 'Usar este horário',
       fields: [
-        TimeSpec('start', 'Início', initial: slot.start, required: true),
-        TimeSpec('end', 'Término', initial: slot.end, required: true),
+        TimeSpec(
+          'start',
+          'Início',
+          initial: slot.start % minutesPerDay,
+          required: true,
+        ),
+        TimeSpec(
+          'end',
+          'Término (antes do início = dia seguinte)',
+          initial: slot.end % minutesPerDay,
+          required: true,
+        ),
       ],
-      validate: (v) => v.time('end')! <= v.time('start')!
-          ? 'O término precisa ser depois do início.'
-          : null,
+      validate: (v) => validateSpan(
+        v.time('start')!,
+        normalizeEnd(v.time('start')!, v.time('end')!),
+      ),
     );
     if (result == null) return;
-    final next = (start: result.time('start')!, end: result.time('end')!);
+    final start = result.time('start')!;
+    final next = (start: start, end: normalizeEnd(start, result.time('end')!));
     setState(() {
       if (next.start == e.start && next.end == e.end) {
         _changes.remove(e.view.id);
@@ -86,8 +98,8 @@ class _ReorganizeScreenState extends ConsumerState<ReorganizeScreen> {
     final names = [
       for (final e in entries)
         if (_changes[e.view.id] case final slot?)
-          '• ${e.view.occ.name}: ${formatMinute(e.start)}–${formatMinute(e.end)}'
-              ' → ${formatMinute(slot.start)}–${formatMinute(slot.end)}',
+          '• ${e.view.occ.name}: ${formatSpan(e.start, e.end)}'
+              ' → ${formatSpan(slot.start, slot.end)}',
     ];
     final ok = await confirm(
       context,
@@ -200,9 +212,9 @@ class _ReorganizeScreenState extends ConsumerState<ReorganizeScreen> {
                         children: [
                           Text(
                             changed
-                                ? '${formatMinute(e.start)}–${formatMinute(e.end)}'
-                                      ' → ${formatMinute(slot.start)}–${formatMinute(slot.end)}'
-                                : '${formatMinute(slot.start)}–${formatMinute(slot.end)}',
+                                ? '${formatSpan(e.start, e.end)}'
+                                      ' → ${formatSpan(slot.start, slot.end)}'
+                                : formatSpan(slot.start, slot.end),
                             style: TextStyle(
                               color: changed
                                   ? AppColors.primary

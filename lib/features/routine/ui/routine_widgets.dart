@@ -95,24 +95,35 @@ Future<Slot?> askSchedule(
     submitLabel: 'Confirmar',
     fields: [
       DateSpec('day', 'Data', initial: dateFromEpochDay(day), required: true),
-      TimeSpec('start', 'Início', initial: start, required: true),
-      TimeSpec('end', 'Término', initial: end, required: true),
+      TimeSpec(
+        'start',
+        'Início',
+        initial: start % minutesPerDay,
+        required: true,
+      ),
+      TimeSpec(
+        'end',
+        'Término (antes do início = dia seguinte)',
+        initial: end % minutesPerDay,
+        required: true,
+      ),
     ],
-    validate: (v) => v.time('end')! <= v.time('start')!
-        ? 'O término precisa ser depois do início.'
-        : null,
+    validate: (v) => validateSpan(
+      v.time('start')!,
+      normalizeEnd(v.time('start')!, v.time('end')!),
+    ),
   );
   if (result == null) return null;
   final slot = (
     day: epochDay(result.date('day')!),
     start: result.time('start')!,
-    end: result.time('end')!,
+    end: normalizeEnd(result.time('start')!, result.time('end')!),
   );
   final conflicts = findConflicts(
     day: slot.day,
     start: slot.start,
     end: slot.end,
-    blocks: await repo.blocksOn(slot.day),
+    blocks: await repo.blocksAround(slot.day),
     ignoreId: ignoreId,
   );
   if (conflicts.isEmpty) return slot;
