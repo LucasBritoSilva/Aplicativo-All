@@ -114,6 +114,8 @@ class _NoteCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final updated = note.updatedAt;
+    final images =
+        ref.watch(noteImagesProvider).value?[note.id] ?? const <NoteImage>[];
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -125,6 +127,17 @@ class _NoteCard extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (images.isNotEmpty) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: SizedBox(
+                    height: 140,
+                    width: double.infinity,
+                    child: NoteImageView(images.first.path, cacheWidth: 720),
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
               if (note.title != null) ...[
                 Text(
                   note.title!,
@@ -153,6 +166,22 @@ class _NoteCard extends ConsumerWidget {
                   if (note.fromVoice) ...[
                     Icon(Icons.mic, size: 14, color: AppColors.primary),
                     const SizedBox(width: 4),
+                  ],
+                  if (images.isNotEmpty) ...[
+                    Icon(
+                      Icons.image_outlined,
+                      size: 14,
+                      color: AppColors.primary,
+                    ),
+                    const SizedBox(width: 2),
+                    Text(
+                      '${images.length}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textFaint,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
                   ],
                   Text(
                     '${friendlyDay(updated, today)} · ${formatTime(updated)}',
