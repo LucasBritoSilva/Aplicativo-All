@@ -203,14 +203,17 @@ class NativeBridge {
   }
 
   /// Envia os limites ao serviço nativo e liga ou desliga o monitor.
-  /// [limits] é pacote -> minutos por dia.
+  /// [limits] é pacote -> minutos por dia; [modes] é pacote -> 'overlay'
+  /// (contador flutuante) ou 'notify' (notificação ao atingir o limite).
   Future<bool> configureMonitor({
     required bool enabled,
     required Map<String, int> limits,
+    Map<String, String> modes = const {},
   }) async =>
       await _call<bool>('configureMonitor', {
         'enabled': enabled,
         'limits': limits,
+        'modes': modes,
       }) ??
       false;
 

@@ -29,6 +29,15 @@ String formatUsage(int ms) {
   return m == 0 ? '${h}h' : '${h}h ${m.toString().padLeft(2, '0')}min';
 }
 
+/// Modo de acompanhamento dos limites ativos ('overlay' ou 'notify').
+Map<String, String> activeModes(
+  Iterable<({String packageName, int limitMinutes, bool enabled, String mode})>
+  limits,
+) => {
+  for (final l in limits)
+    if (l.enabled && l.limitMinutes > 0) l.packageName: l.mode,
+};
+
 /// Limites que o serviço nativo deve vigiar (só os ativos).
 Map<String, int> activeLimits(
   Iterable<({String packageName, int limitMinutes, bool enabled})> limits,

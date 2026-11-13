@@ -219,6 +219,17 @@ void main() {
       expect(formatUsage(120 * 60000), '2h');
     });
 
+    test('modo de cada limite ativo vai para o monitor', () {
+      expect(
+        activeModes(const [
+          (packageName: 'a', limitMinutes: 30, enabled: true, mode: 'notify'),
+          (packageName: 'b', limitMinutes: 10, enabled: false, mode: 'overlay'),
+          (packageName: 'c', limitMinutes: 5, enabled: true, mode: 'overlay'),
+        ]),
+        {'a': 'notify', 'c': 'overlay'},
+      );
+    });
+
     test('só limites ativos vão para o monitor', () {
       expect(
         activeLimits(const [
