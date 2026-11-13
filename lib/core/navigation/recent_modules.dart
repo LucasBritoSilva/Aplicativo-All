@@ -5,8 +5,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../settings/settings_repository.dart';
 import 'app_modules.dart';
 
-/// Quantos atalhos a tela inicial mostra.
+/// Quantos atalhos recentes a tela inicial mostra.
 const maxRecentModules = 6;
+
+/// Quantos acessos ficam guardados no histórico. É mais que os seis da tela
+/// para que, com módulos fixados ou ocultos, ainda sobrem seis recentes.
+const maxStoredRecents = 30;
 
 /// Nova lista de recentes depois de abrir o módulo [id].
 ///
@@ -67,12 +71,14 @@ class RecentModulesNotifier extends AsyncNotifier<List<String>> {
     final stored = await ref
         .watch(settingsRepositoryProvider)
         .read(SettingKeys.recentModules);
-    return parseRecentModules(stored, {for (final m in appModules) m.id});
+    return parseRecentModules(stored, {
+      for (final m in appModules) m.id,
+    }, max: maxStoredRecents);
   }
 
   Future<void> registerAccess(String id) async {
     final current = state.value ?? await future;
-    final next = pushRecentModule(current, id);
+    final next = pushRecentModule(current, id, max: maxStoredRecents);
     state = AsyncData(next);
     await ref
         .read(settingsRepositoryProvider)
