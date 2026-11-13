@@ -1,14 +1,59 @@
 import 'package:flutter/material.dart';
 
-/// Cores do app: fundo quase preto e roxo como destaque.
+/// Opções de cor principal (Configurações → Cor do aplicativo).
+const accentChoices = <(String, Color)>[
+  ('Roxo (original)', Color(0xFF9D7BFF)),
+  ('Azul', Color(0xFF6EA8FE)),
+  ('Ciano', Color(0xFF4DD0E1)),
+  ('Verde', Color(0xFF66D19E)),
+  ('Lima', Color(0xFFB5D94A)),
+  ('Âmbar', Color(0xFFF5B942)),
+  ('Laranja', Color(0xFFFF8A4C)),
+  ('Vermelho', Color(0xFFFF5C5C)),
+  ('Rosa', Color(0xFFF178B6)),
+];
+
+/// Cores do app: fundo quase preto e uma cor de destaque escolhida pelo
+/// usuário (roxo por padrão). As cores de estado (erro, sucesso, atenção)
+/// não mudam com a escolha.
 abstract final class AppColors {
   static const background = Color(0xFF0C0C0F);
   static const surface = Color(0xFF15151A);
   static const surfaceHigh = Color(0xFF1D1D24);
   static const outline = Color(0xFF2A2A33);
-  static const primary = Color(0xFF9D7BFF);
-  static const primaryDim = Color(0xFF6E52C9);
-  static const onPrimary = Color(0xFF130A26);
+
+  /// Roxo original.
+  static const defaultPrimary = Color(0xFF9D7BFF);
+
+  /// Cor de destaque atual (muda com [applyAccent]).
+  static Color primary = defaultPrimary;
+
+  /// Versão escura do destaque (barras, contêineres).
+  static Color primaryDim = _dim(defaultPrimary);
+
+  /// Cor do texto sobre o destaque, sempre com bom contraste.
+  static Color onPrimary = _on(defaultPrimary);
+
+  /// Fundo de contêineres do destaque (chips selecionados etc.).
+  static Color primaryContainer = _container(defaultPrimary);
+
+  static void applyAccent(Color color) {
+    primary = color;
+    primaryDim = _dim(color);
+    onPrimary = _on(color);
+    primaryContainer = _container(color);
+  }
+
+  static Color _dim(Color c) {
+    final hsl = HSLColor.fromColor(c);
+    return hsl.withLightness((hsl.lightness * 0.72).clamp(0.0, 1.0)).toColor();
+  }
+
+  static Color _container(Color c) =>
+      Color.alphaBlend(c.withValues(alpha: 0.22), surface);
+
+  static Color _on(Color c) =>
+      c.computeLuminance() > 0.35 ? const Color(0xFF111114) : Colors.white;
   static const text = Color(0xFFEDEDF2);
   static const textMuted = Color(0xFF9A9AA6);
   static const textFaint = Color(0xFF65656F);
@@ -27,15 +72,15 @@ ThemeData buildAppTheme() {
     borderRadius: BorderRadius.circular(radius),
   );
 
-  const scheme = ColorScheme(
+  final scheme = ColorScheme(
     brightness: Brightness.dark,
     primary: AppColors.primary,
     onPrimary: AppColors.onPrimary,
-    primaryContainer: Color(0xFF2B2145),
+    primaryContainer: AppColors.primaryContainer,
     onPrimaryContainer: AppColors.text,
     secondary: AppColors.primary,
     onSecondary: AppColors.onPrimary,
-    secondaryContainer: Color(0xFF2B2145),
+    secondaryContainer: AppColors.primaryContainer,
     onSecondaryContainer: AppColors.text,
     surface: AppColors.background,
     onSurface: AppColors.text,
@@ -48,7 +93,7 @@ ThemeData buildAppTheme() {
     outline: AppColors.outline,
     outlineVariant: AppColors.outline,
     error: AppColors.danger,
-    onError: AppColors.onPrimary,
+    onError: const Color(0xFF130A26),
     shadow: Colors.transparent,
     scrim: Colors.black,
   );
@@ -129,7 +174,7 @@ ThemeData buildAppTheme() {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.primaryDim),
+        borderSide: BorderSide(color: AppColors.primaryDim),
       ),
     ),
     filledButtonTheme: FilledButtonThemeData(
@@ -159,7 +204,7 @@ ThemeData buildAppTheme() {
             ? AppColors.primary
             : Colors.transparent,
       ),
-      checkColor: const WidgetStatePropertyAll(AppColors.onPrimary),
+      checkColor: WidgetStatePropertyAll(AppColors.onPrimary),
     ),
     switchTheme: SwitchThemeData(
       thumbColor: WidgetStateProperty.resolveWith(
@@ -192,7 +237,7 @@ ThemeData buildAppTheme() {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       showCheckmark: false,
     ),
-    progressIndicatorTheme: const ProgressIndicatorThemeData(
+    progressIndicatorTheme: ProgressIndicatorThemeData(
       color: AppColors.primary,
       linearTrackColor: AppColors.outline,
       circularTrackColor: AppColors.outline,
