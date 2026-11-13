@@ -477,7 +477,7 @@ void main() {
       expect(continuation.view.id, id);
       expect(continuation.start, 10 * 60);
       // A continuação ocupa o horário na verificação de conflitos.
-      final blocks = await repo.blocksOn(monday + 2);
+      final blocks = await repo.blocksAround(monday + 2);
       expect(
         findConflicts(
           day: monday + 2,
