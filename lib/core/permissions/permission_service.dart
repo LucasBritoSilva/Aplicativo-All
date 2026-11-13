@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../native/native_bridge.dart';
+
 /// Situação simplificada de uma permissão.
 enum PermissionState {
   granted,
@@ -18,7 +20,9 @@ PermissionState _map(PermissionStatus s) {
 
 /// Pedidos de permissão em tempo de execução, em um só lugar.
 class PermissionService {
-  const PermissionService();
+  const PermissionService(this._native);
+
+  final NativeBridge _native;
 
   /// POST_NOTIFICATIONS (Android 13+).
   Future<PermissionState> notificationStatus() async =>
@@ -27,13 +31,16 @@ class PermissionService {
   Future<PermissionState> requestNotifications() async =>
       _map(await Permission.notification.request());
 
-  /// Alarmes exatos (SCHEDULE_EXACT_ALARM / USE_EXACT_ALARM).
-  Future<bool> exactAlarmsAllowed() async =>
-      (await Permission.scheduleExactAlarm.status).isGranted;
+  /// Alarmes exatos, consultados direto no AlarmManager.
+  ///
+  /// O permission_handler não serve aqui: a SCHEDULE_EXACT_ALARM só é
+  /// declarada até o Android 12 (no 13+ o app usa USE_EXACT_ALARM), e o
+  /// plugin a trata como "não declarada" e nunca abre a tela certa.
+  Future<bool> exactAlarmsAllowed() => _native.canScheduleExactAlarms();
 
-  /// Abre a tela do Android onde o usuário libera alarmes exatos.
-  Future<bool> requestExactAlarms() async =>
-      (await Permission.scheduleExactAlarm.request()).isGranted;
+  /// Abre a tela "Alarmes e lembretes". O resultado só é conhecido quando o
+  /// usuário volta ao app (quem chamou confere de novo ao retomar).
+  Future<bool> requestExactAlarms() => _native.openExactAlarmSettings();
 
   /// RECORD_AUDIO, para a captura de ideias por voz.
   Future<PermissionState> microphoneStatus() async =>
@@ -47,5 +54,5 @@ class PermissionService {
 }
 
 final permissionServiceProvider = Provider<PermissionService>(
-  (ref) => const PermissionService(),
+  (ref) => PermissionService(ref.watch(nativeBridgeProvider)),
 );
