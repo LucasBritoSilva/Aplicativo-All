@@ -18,12 +18,13 @@ outros apps do celular.
 - **O app não foi testado num celular de verdade nem em emulador**: o
   computador usado não tem virtualização disponível para o emulador e
   nenhum celular estava conectado.
-- O que foi verificado: análise estática sem avisos, 208 testes automáticos
-  (regras, banco de dados, migração da versão 2.0.0, atualização imediata
-  das listas e abertura de todas as telas numa tela de 360 px), compilação
-  de release e a assinatura do APK.
+- O que foi verificado: análise estática sem avisos, 212 testes automáticos
+  (regras, banco de dados, atualização imediata das listas, imagens das
+  notas e abertura de todas as telas numa tela de 360 px), compilação de
+  release e a assinatura do APK.
 - Precisam ser conferidos no aparelho: notificações da rotina, das pausas e
   do limite de apps no horário; o botão de alarmes exatos no Android 12;
+  anexar imagens nas notas pelo seletor de fotos;
   desbloqueio do cofre por biometria e por PIN; contador flutuante; captura
   por voz; discador e WhatsApp; troca de cor do app.
 
@@ -85,8 +86,3 @@ outros apps do celular.
 - A divisão de capítulos segue a usual nas Bíblias em português. No cânon
   católico, Daniel tem 14 capítulos e entram os 7 deuterocanônicos; as
   partes gregas de Ester não são contadas como capítulos à parte.
-
-## Dados de versões anteriores
-
-- Quem tem o "All" 2.0.0 instala o BrutAll por cima e mantém os dados.
-- O "App Pessoal" original é outro app e não é migrado.
