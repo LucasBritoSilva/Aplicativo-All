@@ -26,8 +26,11 @@ import android.widget.TextView
 import org.json.JSONObject
 
 /**
- * Serviço que mostra, sobre o app monitorado em uso, o tempo que ainda
- * resta do limite diário. Não bloqueia nem fecha nenhum app.
+ * Serviço que acompanha os apps monitorados. Cada app tem um modo:
+ * - "overlay": mostra sobre o app em uso o tempo que ainda resta;
+ * - "notify": envia uma notificação, uma vez por dia, quando o uso do dia
+ *   atinge o limite.
+ * Não bloqueia nem fecha nenhum app.
  *
  * Economia de bateria: com a tela desligada nada é verificado; com a tela
  * ligada, os eventos de uso são lidos uma vez por segundo, só do intervalo
@@ -39,20 +42,43 @@ class UsageMonitorService : Service() {
         private const val PREFS = "aplicativo_all_monitor"
         private const val KEY_ENABLED = "enabled"
         private const val KEY_LIMITS = "limits"
+        private const val KEY_MODES = "modes"
+        private const val KEY_NOTIFIED = "notified"
         private const val CHANNEL = "monitor_uso"
+        private const val ALERT_CHANNEL = "limite_uso"
         private const val NOTIFICATION_ID = 900000100
+        private const val ALERT_ID_BASE = 900000200
 
         @Volatile
         var running = false
             private set
 
-        fun saveConfig(context: Context, enabled: Boolean, limits: Map<String, Int>) {
+        fun saveConfig(
+            context: Context,
+            enabled: Boolean,
+            limits: Map<String, Int>,
+            modes: Map<String, String>,
+        ) {
             val json = JSONObject()
             for ((pkg, minutes) in limits) json.put(pkg, minutes)
+            val modesJson = JSONObject()
+            for ((pkg, mode) in modes) modesJson.put(pkg, mode)
             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
                 .putBoolean(KEY_ENABLED, enabled)
                 .putString(KEY_LIMITS, json.toString())
+                .putString(KEY_MODES, modesJson.toString())
                 .apply()
+        }
+
+        fun loadModes(context: Context): Map<String, String> {
+            val raw = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getString(KEY_MODES, null) ?: return emptyMap()
+            return try {
+                val json = JSONObject(raw)
+                buildMap { json.keys().forEach { put(it, json.getString(it)) } }
+            } catch (e: Exception) {
+                emptyMap()
+            }
         }
 
         fun isEnabled(context: Context): Boolean =
@@ -89,6 +115,7 @@ class UsageMonitorService : Service() {
 
     private val handler = Handler(Looper.getMainLooper())
     private var limits: Map<String, Int> = emptyMap()
+    private var modes: Map<String, String> = emptyMap()
     private var overlay: TextView? = null
     private var screenOn = true
 
@@ -149,6 +176,7 @@ class UsageMonitorService : Service() {
         startInForeground()
         running = true
         limits = loadLimits(this)
+        modes = loadModes(this)
         resetTracking()
         handler.removeCallbacks(tick)
         if (screenOn) handler.post(tick)
@@ -171,9 +199,14 @@ class UsageMonitorService : Service() {
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             nm.createNotificationChannel(
-                NotificationChannel(CHANNEL, "Contador de uso de apps", NotificationManager.IMPORTANCE_LOW).apply {
-                    description = "Indica que o contador flutuante do limite de apps está ligado"
+                NotificationChannel(CHANNEL, "Monitor de uso de apps", NotificationManager.IMPORTANCE_LOW).apply {
+                    description = "Indica que o monitoramento do limite de apps está ligado"
                     setShowBadge(false)
+                },
+            )
+            nm.createNotificationChannel(
+                NotificationChannel(ALERT_CHANNEL, "Limite de uso atingido", NotificationManager.IMPORTANCE_HIGH).apply {
+                    description = "Aviso quando um app monitorado atinge o limite do dia"
                 },
             )
         }
@@ -192,7 +225,7 @@ class UsageMonitorService : Service() {
         val notification = builder
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("Limite de uso de apps")
-            .setContentText("Contador flutuante ligado. Toque para abrir o All.")
+            .setContentText("Monitoramento ligado. Toque para abrir o BrutAll.")
             .setContentIntent(open)
             .setOngoing(true)
             .build()
@@ -250,7 +283,70 @@ class UsageMonitorService : Service() {
         }
         val used = baseUsage + (now - enteredAt)
         val remaining = limit * 60_000L - used
-        showOverlay(remaining)
+        if (modes[current] == "notify") {
+            hideOverlay()
+            if (remaining <= 0) notifyLimitReached(current, limit, dayStart)
+        } else {
+            showOverlay(remaining)
+        }
+    }
+
+    /**
+     * Notificação de limite atingido, no máximo uma por app e por dia: o
+     * dia e os apps já avisados ficam gravados, então nem reabrir o app nem
+     * reiniciar o serviço repete o aviso.
+     */
+    private fun notifyLimitReached(pkg: String, limitMinutes: Int, dayStart: Long) {
+        val prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val key = "$dayStart|$pkg"
+        val already = prefs.getStringSet(KEY_NOTIFIED, emptySet()) ?: emptySet()
+        if (key in already) return
+        // Guarda só as marcas de hoje (as de ontem não servem mais).
+        val today = already.filter { it.startsWith("$dayStart|") }.toMutableSet()
+        today.add(key)
+        prefs.edit().putStringSet(KEY_NOTIFIED, today).apply()
+
+        val label = try {
+            val info = packageManager.getApplicationInfo(pkg, 0)
+            packageManager.getApplicationLabel(info).toString()
+        } catch (e: Exception) {
+            pkg
+        }
+        val limitText = if (limitMinutes % 60 == 0) {
+            val h = limitMinutes / 60
+            if (h == 1) "1 hora" else "$h horas"
+        } else if (limitMinutes > 60) {
+            "${limitMinutes / 60}h ${limitMinutes % 60}min"
+        } else {
+            "$limitMinutes minutos"
+        }
+        val open = PendingIntent.getActivity(
+            this,
+            1,
+            Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Notification.Builder(this, ALERT_CHANNEL)
+        } else {
+            @Suppress("DEPRECATION")
+            Notification.Builder(this).setPriority(Notification.PRIORITY_HIGH)
+        }
+        val text = "Você atingiu o limite diário de $limitText para $label."
+        val notification = builder
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle("Limite de uso atingido")
+            .setContentText(text)
+            .setStyle(Notification.BigTextStyle().bigText(text))
+            .setContentIntent(open)
+            .setAutoCancel(true)
+            .build()
+        try {
+            val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            nm.notify(ALERT_ID_BASE + (pkg.hashCode() and 0xFFFF), notification)
+        } catch (e: SecurityException) {
+            // Sem permissão de notificação: não há como avisar.
+        }
     }
 
     private fun format(ms: Long): String {

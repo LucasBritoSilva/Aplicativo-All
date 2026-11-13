@@ -122,7 +122,8 @@ class MainActivity : FlutterActivity() {
             "configureMonitor" -> {
                 val enabled = call.argument<Boolean>("enabled") == true
                 val limits = call.argument<Map<String, Int>>("limits") ?: emptyMap()
-                UsageMonitorService.saveConfig(this, enabled, limits)
+                val modes = call.argument<Map<String, String>>("modes") ?: emptyMap()
+                UsageMonitorService.saveConfig(this, enabled, limits, modes)
                 if (enabled) {
                     result.success(UsageMonitorService.start(this))
                 } else {
