@@ -1,4 +1,3 @@
-import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -9,84 +8,8 @@ import '../../../core/utils/text.dart';
 import '../../../core/widgets/common.dart';
 import '../../../core/widgets/extras.dart';
 import '../../../core/widgets/quick_form.dart';
+import '../data/media_repository.dart';
 import '../domain/media_logic.dart';
-
-MediaEntry mediaEntry(MediaItem m) => (
-  id: m.id,
-  kind: m.kind,
-  title: m.title,
-  watched: m.watched,
-  rating: m.rating,
-);
-
-class MediaRepository {
-  MediaRepository(this._db);
-  final AppDatabase _db;
-
-  Stream<List<MediaItem>> watchAll() =>
-      (_db.select(_db.mediaItems)..orderBy([
-            (m) => OrderingTerm.asc(m.title.collate(Collate.noCase)),
-          ]))
-          .watch();
-
-  Future<void> save({
-    int? id,
-    required MediaKind kind,
-    required String title,
-    double? rating,
-    int? season,
-    int? episode,
-    int? totalEpisodes,
-    String? notes,
-  }) async {
-    final data = MediaItemsCompanion(
-      kind: Value(kind),
-      title: Value(title),
-      rating: Value(rating),
-      season: Value(season),
-      episode: Value(episode),
-      totalEpisodes: Value(totalEpisodes),
-      notes: Value(notes),
-    );
-    if (id == null) {
-      await _db.into(_db.mediaItems).insert(data);
-    } else {
-      await (_db.update(
-        _db.mediaItems,
-      )..where((m) => m.id.equals(id))).write(data);
-    }
-  }
-
-  Future<void> setWatched(int id, bool watched) =>
-      (_db.update(_db.mediaItems)..where((m) => m.id.equals(id))).write(
-        MediaItemsCompanion(
-          watched: Value(watched),
-          watchedAt: Value(watched ? DateTime.now() : null),
-        ),
-      );
-
-  /// Avança um episódio (sem passar do total, se informado).
-  Future<void> nextEpisode(MediaItem m) {
-    final next = (m.episode ?? 0) + 1;
-    final capped = m.totalEpisodes != null && next > m.totalEpisodes!
-        ? m.totalEpisodes!
-        : next;
-    return (_db.update(_db.mediaItems)..where((x) => x.id.equals(m.id))).write(
-      MediaItemsCompanion(episode: Value(capped)),
-    );
-  }
-
-  Future<void> delete(int id) =>
-      (_db.delete(_db.mediaItems)..where((m) => m.id.equals(id))).go();
-}
-
-final mediaRepositoryProvider = Provider<MediaRepository>(
-  (ref) => MediaRepository(ref.watch(databaseProvider)),
-);
-
-final mediaProvider = StreamProvider<List<MediaItem>>(
-  (ref) => ref.watch(mediaRepositoryProvider).watchAll(),
-);
 
 enum _View {
   toWatch('Para assistir'),
@@ -97,122 +20,341 @@ enum _View {
   final String label;
 }
 
-/// Filmes, séries e animes: três abas independentes.
+/// Entretenimento: títulos organizados em categorias criadas pelo usuário.
 class MediaScreen extends ConsumerWidget {
   const MediaScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return DefaultTabController(
-      length: 3,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Filmes, séries e animes'),
-          actions: [
-            IconButton(
-              tooltip: 'O que assistir?',
-              icon: const Icon(Icons.casino_outlined),
-              onPressed: () => showDraw(context),
-            ),
-          ],
-          bottom: TabBar(
-            tabs: [for (final k in MediaKind.values) Tab(text: k.plural)],
-          ),
-        ),
-        body: TabBarView(
-          children: [for (final k in MediaKind.values) _KindTab(kind: k)],
-        ),
+    final data = ref.watch(mediaProvider);
+    final categories = data.value?.categories ?? const <MediaCategory>[];
+    return data.when(
+      loading: () => Scaffold(
+        appBar: AppBar(title: const Text('Entretenimento')),
+        body: const Loading(),
       ),
+      error: (e, _) => Scaffold(
+        appBar: AppBar(title: const Text('Entretenimento')),
+        body: ErrorText(e),
+      ),
+      data: (d) {
+        final actions = [
+          IconButton(
+            tooltip: 'O que assistir?',
+            icon: const Icon(Icons.casino_outlined),
+            onPressed: () => showDraw(context),
+          ),
+          IconButton(
+            tooltip: 'Categorias',
+            icon: const Icon(Icons.category_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const _CategoriesScreen(),
+              ),
+            ),
+          ),
+        ];
+        if (categories.isEmpty) {
+          return Scaffold(
+            appBar: AppBar(
+              title: const Text('Entretenimento'),
+              actions: actions,
+            ),
+            body: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const EmptyState(
+                    icon: Icons.movie_outlined,
+                    title: 'Nenhuma categoria',
+                    message:
+                        'Crie categorias como Filmes, Séries ou Documentários '
+                        'para organizar o que você quer assistir.',
+                  ),
+                  FilledButton.icon(
+                    onPressed: () => openCategoryForm(context, ref),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Criar categoria'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        return DefaultTabController(
+          // Recria as abas quando as categorias mudam.
+          key: ValueKey(categories.map((c) => c.id).join(',')),
+          length: categories.length,
+          child: Scaffold(
+            appBar: AppBar(
+              title: const Text('Entretenimento'),
+              actions: actions,
+              bottom: TabBar(
+                isScrollable: categories.length > 3,
+                tabAlignment: categories.length > 3
+                    ? TabAlignment.start
+                    : TabAlignment.fill,
+                tabs: [for (final c in categories) Tab(text: c.name)],
+              ),
+            ),
+            body: TabBarView(
+              children: [
+                for (final c in categories) _CategoryTab(categoryId: c.id),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
 
-class _KindTab extends ConsumerStatefulWidget {
-  const _KindTab({required this.kind});
-  final MediaKind kind;
-
-  @override
-  ConsumerState<_KindTab> createState() => _KindTabState();
+/// Cadastro ou edição de uma categoria.
+Future<void> openCategoryForm(
+  BuildContext context,
+  WidgetRef ref, [
+  MediaCategory? c,
+]) async {
+  final r = await showQuickForm(
+    context,
+    title: c == null ? 'Nova categoria' : 'Editar categoria',
+    fields: [
+      TextSpec(
+        'name',
+        'Nome (ex.: Documentários)',
+        initial: c?.name,
+        required: true,
+        autofocus: c == null,
+      ),
+      SwitchSpec(
+        'episodes',
+        'Acompanhar temporadas e episódios',
+        initial: c?.hasEpisodes ?? false,
+        subtitle: 'Para séries, animes, novelas e parecidos',
+      ),
+    ],
+  );
+  if (r == null) return;
+  await ref
+      .read(mediaRepositoryProvider)
+      .saveCategory(
+        id: c?.id,
+        name: r.text('name'),
+        hasEpisodes: r.flag('episodes'),
+      );
 }
 
-class _KindTabState extends ConsumerState<_KindTab> {
+/// Exclusão segura: com títulos, pede para mover ou confirmar a exclusão.
+Future<void> deleteCategory(
+  BuildContext context,
+  WidgetRef ref,
+  MediaCategory c,
+  MediaData data,
+) async {
+  final repo = ref.read(mediaRepositoryProvider);
+  final items = data.itemsOf(c.id);
+  if (items.isEmpty) {
+    final ok = await confirm(
+      context,
+      title: 'Excluir categoria',
+      message: 'A categoria "${c.name}" está vazia e será excluída.',
+      confirmLabel: 'Excluir',
+      destructive: true,
+    );
+    if (ok) await repo.deleteCategory(c.id);
+    return;
+  }
+  final others = data.categories.where((x) => x.id != c.id).toList();
+  final r = await showQuickForm(
+    context,
+    title: 'Excluir "${c.name}"',
+    submitLabel: 'Continuar',
+    fields: [
+      ChoiceSpec<int>(
+        'target',
+        'O que fazer com os ${items.length} títulos?',
+        options: [
+          for (final o in others) (o.id, 'Mover para ${o.name}'),
+          (-1, 'Excluir os títulos junto'),
+        ],
+        initial: others.isEmpty ? -1 : others.first.id,
+      ),
+    ],
+  );
+  if (r == null || !context.mounted) return;
+  final target = r.choice<int>('target');
+  if (target == -1) {
+    final ok = await confirm(
+      context,
+      title: 'Excluir títulos?',
+      message:
+          'A categoria "${c.name}" e os ${items.length} títulos dela serão '
+          'apagados. Isso não pode ser desfeito.',
+      confirmLabel: 'Excluir tudo',
+      destructive: true,
+    );
+    if (ok) await repo.deleteCategory(c.id, deleteItems: true);
+  } else {
+    await repo.deleteCategory(c.id, moveTo: target);
+    if (context.mounted) {
+      showMessage(context, 'Títulos movidos e categoria excluída.');
+    }
+  }
+}
+
+class _CategoriesScreen extends ConsumerWidget {
+  const _CategoriesScreen();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final data = ref.watch(mediaProvider);
+    final repo = ref.read(mediaRepositoryProvider);
+    return Scaffold(
+      appBar: AppBar(title: const Text('Categorias')),
+      floatingActionButton: FloatingActionButton(
+        tooltip: 'Nova categoria',
+        onPressed: () => openCategoryForm(context, ref),
+        child: const Icon(Icons.add),
+      ),
+      body: data.view((d) {
+        if (d.categories.isEmpty) {
+          return const EmptyState(
+            icon: Icons.category_outlined,
+            title: 'Nenhuma categoria',
+          );
+        }
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+          children: [
+            Card(
+              child: Column(
+                children: [
+                  for (final (i, c) in d.categories.indexed)
+                    ListTile(
+                      title: Text(c.name),
+                      subtitle: Text(
+                        '${d.itemsOf(c.id).length} títulos'
+                        '${c.hasEpisodes ? ' · com episódios' : ''}',
+                        style: const TextStyle(color: AppColors.textMuted),
+                      ),
+                      onTap: () => openCategoryForm(context, ref, c),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            tooltip: 'Mover para cima',
+                            icon: const Icon(Icons.arrow_upward, size: 20),
+                            onPressed: i == 0
+                                ? null
+                                : () => repo.moveCategory(c.id, -1),
+                          ),
+                          IconButton(
+                            tooltip: 'Excluir categoria',
+                            icon: const Icon(Icons.delete_outline, size: 20),
+                            onPressed: () => deleteCategory(context, ref, c, d),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        );
+      }),
+    );
+  }
+}
+
+class _CategoryTab extends ConsumerStatefulWidget {
+  const _CategoryTab({required this.categoryId});
+  final int categoryId;
+
+  @override
+  ConsumerState<_CategoryTab> createState() => _CategoryTabState();
+}
+
+class _CategoryTabState extends ConsumerState<_CategoryTab> {
   _View _view = _View.toWatch;
   String _query = '';
 
   @override
   Widget build(BuildContext context) {
-    final all = ref.watch(mediaProvider);
-    final kind = widget.kind;
-    return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        heroTag: null,
-        tooltip: 'Adicionar ${kind.label.toLowerCase()}',
-        onPressed: () => openMediaForm(context, ref, kind),
-        child: const Icon(Icons.add),
-      ),
-      body: Column(
-        children: [
-          SearchField(
-            hint: 'Buscar ${kind.plural.toLowerCase()}',
-            onChanged: (v) => setState(() => _query = v),
-          ),
-          FilterBar<_View>(
-            options: [for (final v in _View.values) (v, v.label)],
-            selected: _view,
-            onSelected: (v) => setState(() => _view = v),
-          ),
-          Expanded(
-            child: all.view((items) {
-              final ofKind = [
-                for (final m in items)
-                  if (m.kind == kind &&
-                      matchesQuery(_query, [m.title, m.notes]))
-                    m,
-              ];
-              final list = switch (_view) {
-                _View.toWatch => ofKind.where((m) => !m.watched).toList(),
-                _View.watched => ofKind.where((m) => m.watched).toList(),
-                _View.ranking => rankWatched(ofKind, mediaEntry),
-              };
-              if (list.isEmpty) {
-                return EmptyState(
-                  icon: Icons.movie_outlined,
-                  title: switch (_view) {
-                    _View.toWatch => 'Nada na lista para assistir',
-                    _View.watched => 'Nada assistido ainda',
-                    _View.ranking => 'Ranking vazio',
-                  },
-                  message: _view == _View.ranking
-                      ? 'O ranking mostra só os assistidos que têm nota.'
-                      : null,
-                );
-              }
-              return ListView.separated(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
-                itemCount: list.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 8),
-                itemBuilder: (context, i) => _MediaCard(
-                  item: list[i],
-                  position: _view == _View.ranking ? i + 1 : null,
-                ),
-              );
-            }),
-          ),
-        ],
-      ),
-    );
+    final data = ref.watch(mediaProvider);
+    return data.view((d) {
+      final category = d.category(widget.categoryId);
+      if (category == null) return const SizedBox.shrink();
+      final ofCategory = [
+        for (final m in d.itemsOf(category.id))
+          if (matchesQuery(_query, [m.title, m.notes])) m,
+      ];
+      final list = switch (_view) {
+        _View.toWatch => ofCategory.where((m) => !m.watched).toList(),
+        _View.watched => ofCategory.where((m) => m.watched).toList(),
+        _View.ranking => rankWatched(ofCategory, mediaEntry),
+      };
+      return Scaffold(
+        floatingActionButton: FloatingActionButton(
+          heroTag: null,
+          tooltip: 'Adicionar em ${category.name}',
+          onPressed: () => openMediaForm(context, ref, d, category),
+          child: const Icon(Icons.add),
+        ),
+        body: Column(
+          children: [
+            SearchField(
+              hint: 'Buscar em ${category.name}',
+              onChanged: (v) => setState(() => _query = v),
+            ),
+            FilterBar<_View>(
+              options: [for (final v in _View.values) (v, v.label)],
+              selected: _view,
+              onSelected: (v) => setState(() => _view = v),
+            ),
+            Expanded(
+              child: list.isEmpty
+                  ? EmptyState(
+                      icon: Icons.movie_outlined,
+                      title: switch (_view) {
+                        _View.toWatch => 'Nada para assistir aqui',
+                        _View.watched => 'Nada assistido ainda',
+                        _View.ranking => 'Ranking vazio',
+                      },
+                      message: _view == _View.ranking
+                          ? 'O ranking mostra só os assistidos que têm nota.'
+                          : null,
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
+                      itemCount: list.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 8),
+                      itemBuilder: (context, i) => _MediaCard(
+                        item: list[i],
+                        category: category,
+                        data: d,
+                        position: _view == _View.ranking ? i + 1 : null,
+                      ),
+                    ),
+            ),
+          ],
+        ),
+      );
+    });
   }
 }
 
 Future<void> openMediaForm(
   BuildContext context,
   WidgetRef ref,
-  MediaKind kind, [
+  MediaData data,
+  MediaCategory category, [
   MediaItem? m,
 ]) async {
+  // Primeira etapa: em qual categoria (só ao editar, para poder mover).
+  var target = category;
   final r = await showQuickForm(
     context,
-    title: m == null ? 'Adicionar ${kind.label.toLowerCase()}' : 'Editar',
+    title: m == null ? 'Adicionar em ${category.name}' : 'Editar',
     deleteLabel: m == null ? null : 'Excluir',
     fields: [
       TextSpec(
@@ -223,6 +365,13 @@ Future<void> openMediaForm(
         autofocus: m == null,
         capitalization: TextCapitalization.words,
       ),
+      if (m != null && data.categories.length > 1)
+        ChoiceSpec<int>(
+          'category',
+          'Categoria',
+          options: [for (final c in data.categories) (c.id, c.name)],
+          initial: category.id,
+        ),
       NumberSpec(
         'rating',
         'Nota de 0 a 10 (opcional)',
@@ -230,7 +379,7 @@ Future<void> openMediaForm(
         min: 0,
         max: 10,
       ),
-      if (kind.hasEpisodes) ...[
+      if (category.hasEpisodes) ...[
         NumberSpec(
           'season',
           'Temporada atual',
@@ -269,29 +418,39 @@ Future<void> openMediaForm(
     final ok = await confirm(
       context,
       title: 'Excluir',
-      message: '"${m!.title}" será removido da lista.',
+      message: '"${m!.title}" será removido.',
       confirmLabel: 'Excluir',
       destructive: true,
     );
-    if (ok) await repo.delete(m.id);
+    if (ok) await repo.deleteItem(m.id);
     return;
   }
-  await repo.save(
+  if (m != null && data.categories.length > 1) {
+    target = data.category(r.choice<int>('category')) ?? category;
+  }
+  await repo.saveItem(
     id: m?.id,
-    kind: kind,
+    category: target,
     title: r.text('title'),
     rating: r.number('rating'),
-    season: kind.hasEpisodes ? r.integer('season') : null,
-    episode: kind.hasEpisodes ? r.integer('episode') : null,
-    totalEpisodes: kind.hasEpisodes ? r.integer('total') : null,
+    season: r.integer('season') ?? m?.season,
+    episode: r.integer('episode') ?? m?.episode,
+    totalEpisodes: r.integer('total') ?? m?.totalEpisodes,
     notes: r.textOrNull('notes'),
   );
 }
 
 class _MediaCard extends ConsumerWidget {
-  const _MediaCard({required this.item, this.position});
+  const _MediaCard({
+    required this.item,
+    required this.category,
+    required this.data,
+    this.position,
+  });
 
   final MediaItem item;
+  final MediaCategory category;
+  final MediaData data;
   final int? position;
 
   @override
@@ -300,14 +459,14 @@ class _MediaCard extends ConsumerWidget {
     final repo = ref.read(mediaRepositoryProvider);
     final progress = episodeProgress(m.episode, m.totalEpisodes);
     final episodeText =
-        m.kind.hasEpisodes && (m.season != null || m.episode != null)
+        category.hasEpisodes && (m.season != null || m.episode != null)
         ? 'T${m.season ?? 1} · E${m.episode ?? 0}'
               '${m.totalEpisodes == null ? '' : ' de ${m.totalEpisodes}'}'
         : null;
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => openMediaForm(context, ref, m.kind, m),
+        onTap: () => openMediaForm(context, ref, data, category, m),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(4, 8, 12, 8),
           child: Row(
@@ -318,7 +477,7 @@ class _MediaCard extends ConsumerWidget {
                   child: Text(
                     '$positionº',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
                       color: AppColors.primary,
@@ -359,7 +518,7 @@ class _MediaCard extends ConsumerWidget {
                   ],
                 ),
               ),
-              if (m.kind.hasEpisodes && !m.watched)
+              if (category.hasEpisodes && !m.watched)
                 IconButton(
                   tooltip: 'Marcar próximo episódio',
                   icon: const Icon(Icons.exposure_plus_1),
@@ -390,7 +549,7 @@ class _DrawSheet extends ConsumerStatefulWidget {
 }
 
 class _DrawSheetState extends ConsumerState<_DrawSheet> {
-  MediaKind? _kind;
+  int? _categoryId;
   MediaItem? _picked;
   bool _empty = false;
 
@@ -398,7 +557,7 @@ class _DrawSheetState extends ConsumerState<_DrawSheet> {
     final next = drawUnwatched(
       items,
       mediaEntry,
-      kind: _kind,
+      categoryId: _categoryId,
       avoidId: _picked?.id,
     );
     setState(() {
@@ -409,8 +568,10 @@ class _DrawSheetState extends ConsumerState<_DrawSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final items = ref.watch(mediaProvider).value ?? const <MediaItem>[];
-    return Padding(
+    final data = ref.watch(mediaProvider).value;
+    final items = data?.items ?? const <MediaItem>[];
+    final categories = data?.categories ?? const <MediaCategory>[];
+    return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -423,17 +584,18 @@ class _DrawSheetState extends ConsumerState<_DrawSheet> {
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
+            runSpacing: 4,
             children: [
               ChoiceChip(
-                label: const Text('Todos'),
-                selected: _kind == null,
-                onSelected: (_) => setState(() => _kind = null),
+                label: const Text('Todas'),
+                selected: _categoryId == null,
+                onSelected: (_) => setState(() => _categoryId = null),
               ),
-              for (final k in MediaKind.values)
+              for (final c in categories)
                 ChoiceChip(
-                  label: Text(k.plural),
-                  selected: _kind == k,
-                  onSelected: (_) => setState(() => _kind = k),
+                  label: Text(c.name),
+                  selected: _categoryId == c.id,
+                  onSelected: (_) => setState(() => _categoryId = c.id),
                 ),
             ],
           ),
@@ -463,6 +625,8 @@ class _DrawSheetState extends ConsumerState<_DrawSheet> {
                       Text(
                         _picked!.title,
                         textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w700,
@@ -470,8 +634,8 @@ class _DrawSheetState extends ConsumerState<_DrawSheet> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        _picked!.kind.label,
-                        style: const TextStyle(color: AppColors.primary),
+                        data?.category(_picked!.categoryId)?.name ?? '',
+                        style: TextStyle(color: AppColors.primary),
                       ),
                     ],
                   ),
