@@ -6,10 +6,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/navigation/app_modules.dart';
 import 'core/navigation/home_screen.dart';
+import 'core/navigation/module_prefs.dart';
 import 'core/navigation/recent_modules.dart';
 import 'core/notifications/notification_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/today_provider.dart';
+import 'core/widgets/app_footer.dart';
 import 'features/reminders/data/reminders_repository.dart';
 import 'features/routine/data/routine_sync.dart';
 import 'features/routine/domain/routine_logic.dart';
@@ -41,7 +43,9 @@ class _AppState extends ConsumerState<App> {
     _taps = ref.read(notificationServiceProvider).taps.listen(_openPayload);
     final payload = widget.launchPayload;
     if (payload != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _openPayload(payload));
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _openPayload(payload),
+      );
     }
   }
 
@@ -58,6 +62,22 @@ class _AppState extends ConsumerState<App> {
       await ref.read(routineSyncProvider).syncNotifications();
     } catch (e) {
       debugPrint('Falha ao reagendar avisos: $e');
+    }
+  }
+
+  /// Redesenha todas as telas, para a nova cor valer também nas que usam
+  /// [AppColors] diretamente (sem depender do tema).
+  void _rebuildAll() {
+    void visit(Element e) {
+      e.markNeedsBuild();
+      e.visitChildren(visit);
+    }
+
+    final root = appNavigatorKey.currentContext;
+    if (root is Element) {
+      visit(root);
+    } else if (mounted) {
+      (context as Element).visitChildren(visit);
     }
   }
 
@@ -83,9 +103,17 @@ class _AppState extends ConsumerState<App> {
       if (previous != next) ref.read(routineSyncProvider).run();
     });
 
+    // Cor de destaque escolhida em Configurações: vale na hora, em todas
+    // as telas abertas (inclusive as que ficaram embaixo de outras).
+    final accent = ref.watch(accentColorProvider);
+    if (accent.toARGB32() != AppColors.primary.toARGB32()) {
+      AppColors.applyAccent(accent);
+      WidgetsBinding.instance.addPostFrameCallback((_) => _rebuildAll());
+    }
+
     final theme = buildAppTheme();
     return MaterialApp(
-      title: 'All',
+      title: 'BrutAll',
       navigatorKey: appNavigatorKey,
       debugShowCheckedModeBanner: false,
       theme: theme,
@@ -94,6 +122,8 @@ class _AppState extends ConsumerState<App> {
       locale: const Locale('pt', 'BR'),
       supportedLocales: const [Locale('pt', 'BR')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
+      builder: (context, child) =>
+          WithAppFooter(child: child ?? const SizedBox.shrink()),
       home: const HomeScreen(),
     );
   }
