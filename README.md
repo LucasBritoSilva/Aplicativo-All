@@ -17,7 +17,7 @@ módulos organizados em 6 categorias, num menu lateral, e uma tela inicial
 com os módulos fixados por você e os 6 usados por último.
 
 > **Baixar o app:** [**BrutAll.apk**](https://github.com/LucasBritoSilva/Aplicativo-All/releases/latest/download/BrutAll.apk)
-> (versão final). O passo a passo está em [Como instalar](#como-instalar).
+> O passo a passo está em [Como instalar](#como-instalar).
 
 ---
 
@@ -43,7 +43,7 @@ Toque numa categoria para ver os módulos dela. **Toque e segure** um módulo
 ### 2. Anotações e desenvolvimento
 | Módulo | O que faz |
 | --- | --- |
-| **Notas e ideias por voz** | Notas com título opcional, busca, fixar no topo e captura de ideias por voz (com alternativa digitada). |
+| **Notas e ideias por voz** | Notas com título opcional, imagens anexadas (com visualização em tela cheia), busca, fixar no topo e captura de ideias por voz (com alternativa digitada). |
 | **Conhecimentos** | Assuntos com descrição, categoria e domínio avaliado de 1 a 5 estrelas. Busca e ordenação. |
 | **Ideias de projetos** | Título, descrição, ferramentas planejadas, observações e estágio (Ideia, Planejado, Em andamento, Concluído). |
 
@@ -92,22 +92,6 @@ Toque numa categoria para ver os módulos dela. **Toque e segure** um módulo
 - Internet: **não é usada**. O BrutAll não tem permissão de internet; links
   (desejos, WhatsApp) são abertos em outros apps.
 
-## Permissões
-
-Cada permissão só é pedida quando a função que precisa dela é usada. Negar
-uma permissão não trava o app: só aquela função fica limitada.
-
-| Permissão | Para quê | Quando é pedida |
-| --- | --- | --- |
-| Notificações | Aviso no início das atividades da rotina, lembretes, fim das pausas e limite de apps atingido | Ao usar uma dessas funções |
-| Alarmes e lembretes (alarme exato) | Avisar no minuto certo | Concedida na instalação no Android 13+; no Android 12, o botão em Configurações abre a tela certa |
-| Iniciar com o sistema | Reagendar avisos e o monitor de uso após reiniciar | Automática |
-| Microfone | Ideias por voz | Ao abrir a captura por voz |
-| Biometria | Abrir o cofre | Ao abrir o cofre |
-| Acesso ao uso | Ler o tempo de uso de cada app (Limite de apps) | Você libera na tela do módulo |
-| Sobrepor a outros apps | Contador flutuante do Limite de apps | Você libera na tela do módulo |
-| Serviço em primeiro plano | Manter o monitor de uso ligado (com notificação fixa) | Ao ligar o monitoramento |
-
 ## Privacidade e armazenamento
 
 - Os dados ficam **só no celular**, num banco SQLite privado do app. Não há
@@ -135,12 +119,6 @@ uma permissão não trava o app: só aquela função fica limitada.
 > O Google Play Protect pode avisar que o app é desconhecido (ele não está
 > na Play Store). Toque em **Mais detalhes → Instalar assim mesmo**.
 
-- **Se você tem o "All" 2.0.0 instalado:** o BrutAll instala por cima e
-  mantém os dados (filmes, séries e animes viram categorias do
-  Entretenimento).
-- **Se você tem o "App Pessoal" antigo:** ele é outro app; os dois podem
-  ficar instalados e os dados dele não passam para o BrutAll.
-
 ---
 
 ## Para quem programa
@@ -167,8 +145,8 @@ flutter build apk --debug
 | --- | --- |
 | `lib/core/` | Banco, navegação, notificações, permissões, tema, componentes, ponte nativa |
 | `lib/features/<módulo>/` | Um módulo por pasta (`data`, `domain`, `ui`) |
-| `android/app/src/main/kotlin/` | Cofre (Keystore), uso de apps, monitor e alarmes exatos |
-| `test/` | Testes automáticos (regras, banco, migração e abertura de todas as telas) |
+| `android/app/src/main/kotlin/` | Cofre (Keystore), uso de apps, monitor, alarmes exatos e seletor de fotos |
+| `test/` | Testes automáticos (regras, banco e abertura de todas as telas) |
 | `docs/` | Rotina, segurança do cofre, limitações, publicação, decisões |
 
 Documentos: [Decisões técnicas](docs/DECISOES.md) ·
