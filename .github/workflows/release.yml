@@ -37,8 +37,10 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           cd "$TAG"
+          TITLE=$(head -n 1 TITULO.txt 2>/dev/null || echo "BrutAll")
           gh release create "$TAG" *.apk SHA256SUMS.txt \
             --repo "$GITHUB_REPOSITORY" \
-            --title "All ${TAG#v}" \
+            --title "$TITLE" \
             --notes-file NOTAS.md \
+            --latest \
             --verify-tag
