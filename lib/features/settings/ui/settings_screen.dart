@@ -227,11 +227,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     granted: p.exact,
                     deniedText: 'Desativados: lembretes podem atrasar',
                     onFix: () async {
-                      await ref
+                      final opened = await ref
                           .read(permissionServiceProvider)
                           .requestExactAlarms();
+                      if (!opened && context.mounted) {
+                        showMessage(
+                          context,
+                          'Este Android não tem a tela de alarmes exatos.',
+                        );
+                      }
                       ref.invalidate(_permissionsOverviewProvider);
-                      await ref.read(reminderSchedulerProvider).resync();
                     },
                   ),
                   _PermissionTile(

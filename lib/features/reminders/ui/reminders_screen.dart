@@ -160,11 +160,18 @@ class _RemindersScreenState extends ConsumerState<RemindersScreen> {
     ref.invalidate(reminderPermissionsProvider);
   }
 
+  /// Abre a tela "Alarmes e lembretes". Ao voltar, o app confere a
+  /// permissão de novo e reagenda tudo no modo certo (ver App).
   Future<void> _askExact() async {
-    await ref.read(permissionServiceProvider).requestExactAlarms();
+    final opened = await ref.read(permissionServiceProvider).requestExactAlarms();
+    if (!opened && mounted) {
+      showMessage(
+        context,
+        'Este Android não tem a tela de alarmes exatos. Os lembretes podem '
+        'atrasar alguns minutos.',
+      );
+    }
     ref.invalidate(reminderPermissionsProvider);
-    // Reagenda com o modo certo, agora que a permissão pode ter mudado.
-    await ref.read(reminderSchedulerProvider).resync();
   }
 
   Future<void> _clearPast() async {
