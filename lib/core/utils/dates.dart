@@ -143,8 +143,12 @@ DateTime dateTimeAt(int day, int minute) {
   return DateTime(d.year, d.month, d.day, minute ~/ 60, minute % 60);
 }
 
-/// 14:05, a partir de minutos desde a meia-noite.
-String formatMinute(int minute) => '${_two(minute ~/ 60)}:${_two(minute % 60)}';
+/// 14:05, a partir de minutos desde a meia-noite. Valores de 1440 em
+/// diante (dia seguinte) mostram só o horário: 1620 vira 03:00.
+String formatMinute(int minute) {
+  final m = minute % 1440;
+  return '${_two(m ~/ 60)}:${_two(m % 60)}';
+}
 
 /// 11/11, sem o ano.
 String formatDayMonthNumeric(DateTime d) => '${_two(d.day)}/${_two(d.month)}';
