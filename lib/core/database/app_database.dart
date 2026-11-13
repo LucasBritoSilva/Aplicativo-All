@@ -59,6 +59,7 @@ part 'app_database.g.dart';
     HabitChecks,
     Goals,
     Notes,
+    NoteImages,
     RoutineActivities,
     RoutineOccurrences,
     RoutineSessions,
@@ -94,11 +95,10 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor])
     : super(executor ?? driftDatabase(name: 'aplicativo_all'));
 
-  /// Versão 2: All 2.0.0. Versão 3: BrutAll (categorias do Entretenimento
-  /// e modo de acompanhamento dos limites de apps). A versão 1 era do app
-  /// original, com outro identificador; não existe migração dela.
+  /// Versões do esquema: 3 trouxe as categorias do Entretenimento e o modo
+  /// dos limites de apps; 4 trouxe as imagens anexadas às notas.
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -112,6 +112,9 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(mediaItems, mediaItems.categoryId);
         await m.addColumn(appLimits, appLimits.mode);
         await _migrateMediaToCategories();
+      }
+      if (from < 4) {
+        await m.createTable(noteImages);
       }
     },
     beforeOpen: (details) async {

@@ -90,3 +90,14 @@ class Notes extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }
+
+/// Imagens anexadas às notas. O arquivo fica na pasta privada do app
+/// ([path]); a linha some junto com a nota.
+class NoteImages extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get noteId =>
+      integer().references(Notes, #id, onDelete: KeyAction.cascade)();
+  TextColumn get path => text()();
+  IntColumn get position => integer().withDefault(const Constant(0))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
