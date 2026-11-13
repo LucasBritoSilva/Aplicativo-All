@@ -22,6 +22,21 @@ movido ou encerrado automaticamente.
   como está, e o passado nunca muda.
 - Remover uma atividade do planejamento preserva o histórico.
 
+## Atividades que passam da meia-noite
+
+- Se o término escolhido for antes do início (ex.: 23h às 3h), a atividade
+  termina **no dia seguinte**. O término é guardado como minutos acima de
+  24h00 (3h do dia seguinte = 1620), sempre relativo ao dia de início.
+- A duração planejada é calculada pelo intervalo real (23h às 3h = 4 horas)
+  e precisa ser menor que 24 horas.
+- A ocorrência pertence ao dia em que começa. No dia seguinte ela aparece
+  como "continua de ontem", sem ser contada de novo nos indicadores.
+- Conflitos são verificados em minutos absolutos, então uma atividade das
+  23h às 3h de segunda conflita com outra às 2h de terça. Domingo à noite
+  também conflita com segunda de madrugada no planejamento recorrente.
+- O aviso continua no horário de início e as sessões do cronômetro ficam
+  na ocorrência original, mesmo depois da meia-noite.
+
 ## Estados
 
 Gravados: pendente, em andamento, pausada, aguardando retomada, concluída,
