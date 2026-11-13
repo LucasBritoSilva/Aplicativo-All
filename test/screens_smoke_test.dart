@@ -2,6 +2,7 @@ import 'package:aplicativo_all/core/database/app_database.dart';
 import 'package:aplicativo_all/core/navigation/app_modules.dart';
 import 'package:aplicativo_all/core/navigation/home_screen.dart';
 import 'package:aplicativo_all/core/theme/app_theme.dart';
+import 'package:aplicativo_all/features/settings/ui/settings_screen.dart';
 import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -47,6 +48,14 @@ void main() {
 
   testWidgets('tela inicial abre com sugestões e o menu', (tester) async {
     await open(tester, (_) => const HomeScreen());
+  });
+
+  testWidgets('configurações abrem sem erro', (tester) async {
+    await open(tester, (_) => const SettingsScreen());
+  });
+
+  testWidgets('fixar e ocultar módulos abre sem erro', (tester) async {
+    await open(tester, (_) => const ModulesManageScreen());
   });
 
   for (final module in appModules) {
