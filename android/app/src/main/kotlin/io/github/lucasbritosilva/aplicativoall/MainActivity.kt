@@ -1,6 +1,7 @@
 package io.github.lucasbritosilva.aplicativoall
 
 import android.annotation.TargetApi
+import android.app.AlarmManager
 import android.app.KeyguardManager
 import android.content.ActivityNotFoundException
 import android.content.ClipData
@@ -86,6 +87,9 @@ class MainActivity : FlutterActivity() {
                 result.success(payloads.map { vault.decrypt(it) })
             }
 
+            "canScheduleExactAlarms" -> result.success(canScheduleExactAlarms())
+            "openExactAlarmSettings" -> result.success(openExactAlarmSettings())
+
             "hasUsageAccess" -> result.success(UsageStatsHelper.hasAccess(this))
             "openUsageAccessSettings" -> {
                 openSettings(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
@@ -129,6 +133,31 @@ class MainActivity : FlutterActivity() {
             "monitorRunning" -> result.success(UsageMonitorService.running)
             else -> result.notImplemented()
         }
+    }
+
+    // ---- Alarmes exatos ----
+
+    /**
+     * Android 11 ou anterior: sempre permitido. Android 12: depende da
+     * permissão SCHEDULE_EXACT_ALARM, que o usuário liga na tela "Alarmes e
+     * lembretes". Android 13+: o app usa USE_EXACT_ALARM, concedida na
+     * instalação, e o AlarmManager responde verdadeiro.
+     */
+    private fun canScheduleExactAlarms(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return true
+        val am = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        return am.canScheduleExactAlarms()
+    }
+
+    /** Abre a tela "Alarmes e lembretes" do app. Falso se não existir. */
+    private fun openExactAlarmSettings(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return false
+        val intent = Intent(
+            Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+            Uri.parse("package:$packageName"),
+        )
+        if (start(intent)) return true
+        return start(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
     }
 
     // ---- Links e telefone (só abrem o app; nada é enviado sozinho) ----

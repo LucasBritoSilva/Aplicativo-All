@@ -89,6 +89,17 @@ class NativeBridge {
   Future<void> setSecureScreen(bool enabled) =>
       _call<void>('setSecure', {'enabled': enabled});
 
+  // ---- Alarmes exatos ----
+
+  /// Se o Android deixa o app agendar alarmes no minuto exato.
+  /// Sem o lado nativo (testes), considera permitido.
+  Future<bool> canScheduleExactAlarms() async =>
+      await _call<bool>('canScheduleExactAlarms') ?? true;
+
+  /// Abre a tela "Alarmes e lembretes" (Android 12+). Falso se não houver.
+  Future<bool> openExactAlarmSettings() async =>
+      await _call<bool>('openExactAlarmSettings') ?? false;
+
   // ---- Cofre ----
 
   Future<VaultState> vaultState() async {
