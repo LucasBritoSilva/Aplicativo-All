@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -24,12 +25,23 @@ class PermissionService {
 
   final NativeBridge _native;
 
-  /// POST_NOTIFICATIONS (Android 13+).
-  Future<PermissionState> notificationStatus() async =>
-      _map(await Permission.notification.status);
+  /// Consulta segura: se o plugin falhar, conta como negada (o app segue
+  /// funcionando, só sem aquela função).
+  Future<PermissionState> _safe(Future<PermissionStatus> Function() run) async {
+    try {
+      return _map(await run());
+    } catch (e) {
+      debugPrint('Falha ao consultar permissão: $e');
+      return PermissionState.denied;
+    }
+  }
 
-  Future<PermissionState> requestNotifications() async =>
-      _map(await Permission.notification.request());
+  /// POST_NOTIFICATIONS (Android 13+).
+  Future<PermissionState> notificationStatus() =>
+      _safe(() => Permission.notification.status);
+
+  Future<PermissionState> requestNotifications() =>
+      _safe(() => Permission.notification.request());
 
   /// Alarmes exatos, consultados direto no AlarmManager.
   ///
@@ -43,14 +55,20 @@ class PermissionService {
   Future<bool> requestExactAlarms() => _native.openExactAlarmSettings();
 
   /// RECORD_AUDIO, para a captura de ideias por voz.
-  Future<PermissionState> microphoneStatus() async =>
-      _map(await Permission.microphone.status);
+  Future<PermissionState> microphoneStatus() =>
+      _safe(() => Permission.microphone.status);
 
-  Future<PermissionState> requestMicrophone() async =>
-      _map(await Permission.microphone.request());
+  Future<PermissionState> requestMicrophone() =>
+      _safe(() => Permission.microphone.request());
 
   /// Abre a tela de configurações do app no Android.
-  Future<bool> openSettings() => openAppSettings();
+  Future<bool> openSettings() async {
+    try {
+      return await openAppSettings();
+    } catch (_) {
+      return false;
+    }
+  }
 }
 
 final permissionServiceProvider = Provider<PermissionService>(
