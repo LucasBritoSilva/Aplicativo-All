@@ -192,7 +192,7 @@ class MainActivity : FlutterActivity() {
 
     private fun copySensitive(text: String) {
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        val clip = ClipData.newPlainText("All", text)
+        val clip = ClipData.newPlainText("BrutAll", text)
         clip.description.extras = PersistableBundle().apply {
             putBoolean("android.content.extra.IS_SENSITIVE", true)
         }
