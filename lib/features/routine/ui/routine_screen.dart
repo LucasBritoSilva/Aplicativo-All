@@ -52,9 +52,7 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
   }
 
   void _push(Widget screen) {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute<void>(builder: (_) => screen));
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
   }
 
   void _menu(String value) {
@@ -219,14 +217,18 @@ class _DayView extends ConsumerWidget {
       for (final e in entries)
         if (e.view.occ.kind != ActivityKind.rest &&
             (e.kind == DayEntryKind.continuation ||
-                (e.kind == DayEntryKind.normal &&
+                ((e.kind == DayEntryKind.normal ||
+                        e.kind == DayEntryKind.fromPreviousDay) &&
                     (e.view.occ.status == OccurrenceStatus.pending ||
                         e.view.occ.status == OccurrenceStatus.inProgress ||
                         e.view.occ.status == OccurrenceStatus.paused))))
           e,
     ];
     if (open.isEmpty) return null;
-    for (final status in [OccurrenceStatus.inProgress, OccurrenceStatus.paused]) {
+    for (final status in [
+      OccurrenceStatus.inProgress,
+      OccurrenceStatus.paused,
+    ]) {
       for (final e in open) {
         if (e.view.occ.status == status) return e;
       }
@@ -323,7 +325,10 @@ class _ProgressCard extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 parts.join(' · '),
-                style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                style: const TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 13,
+                ),
               ),
             ],
           ],
@@ -407,7 +412,10 @@ class _FocusCard extends ConsumerWidget {
               Text(occ.name, style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 2),
               Text(
-                '${formatMinute(entry.start)}–${formatMinute(entry.end)}',
+                entry.kind == DayEntryKind.fromPreviousDay
+                    ? 'Começou ontem às ${formatMinute(occ.scheduledStart)} · '
+                          'termina às ${formatMinute(entry.end)}'
+                    : formatSpan(entry.start, entry.end),
                 style: const TextStyle(color: AppColors.textMuted),
               ),
               if (occ.timerEnabled && view.sessions.isNotEmpty) ...[
@@ -472,6 +480,7 @@ class _EntryCard extends ConsumerWidget {
     final state = view.state(now, tolerance);
     final moved = entry.kind == DayEntryKind.movedAway;
     final continuation = entry.kind == DayEntryKind.continuation;
+    final fromYesterday = entry.kind == DayEntryKind.fromPreviousDay;
     final closed = state.isClosed;
     final faded = moved || closed;
     final actions = ref.read(routineActionsProvider);
@@ -515,7 +524,11 @@ class _EntryCard extends ConsumerWidget {
         'Reagendada para '
             '${friendlyDay(dateFromEpochDay(occ.scheduledDay), todayDate)}, '
             '${formatMinute(occ.scheduledStart)}',
-      if (!moved && !continuation && occ.rescheduled)
+      if (fromYesterday)
+        'Continua de ontem (começou às ${formatMinute(occ.scheduledStart)})',
+      if (!fromYesterday && crossesMidnight(entry.end))
+        'Termina amanhã às ${formatMinute(entry.end)}',
+      if (!moved && !continuation && !fromYesterday && occ.rescheduled)
         'Planejada para '
             '${formatDayMonthNumeric(dateFromEpochDay(occ.originalDay))}, '
             '${formatMinute(occ.plannedStart)}',
@@ -690,10 +703,7 @@ class _WeekDayCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const Icon(
-                      Icons.chevron_right,
-                      color: AppColors.textFaint,
-                    ),
+                    const Icon(Icons.chevron_right, color: AppColors.textFaint),
                   ],
                 ),
               ),
@@ -725,7 +735,12 @@ class _WeekDayCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          '${formatMinute(e.start)}–${formatMinute(e.end)}',
+                          e.kind == DayEntryKind.fromPreviousDay
+                              ? 'até ${formatMinute(e.end)}'
+                              : formatSpan(
+                                  e.start,
+                                  e.end,
+                                ).replaceAll(' (dia seguinte)', ' (+1)'),
                           style: const TextStyle(
                             color: AppColors.textMuted,
                             fontSize: 13,
@@ -734,9 +749,13 @@ class _WeekDayCard extends StatelessWidget {
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            e.kind == DayEntryKind.continuation
-                                ? 'Retomada: ${e.view.occ.name}'
-                                : e.view.occ.name,
+                            switch (e.kind) {
+                              DayEntryKind.continuation =>
+                                'Retomada: ${e.view.occ.name}',
+                              DayEntryKind.fromPreviousDay =>
+                                '${e.view.occ.name} (continua de ontem)',
+                              _ => e.view.occ.name,
+                            },
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),

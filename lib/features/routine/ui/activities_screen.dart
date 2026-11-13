@@ -70,7 +70,7 @@ class _ActivityCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '${formatMinute(a.startMinute)}–${formatMinute(a.endMinute)} · $when',
+                '${formatSpan(a.startMinute, a.endMinute)} · $when',
                 style: const TextStyle(color: AppColors.textMuted),
               ),
               const SizedBox(height: 6),

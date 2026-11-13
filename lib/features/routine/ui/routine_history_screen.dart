@@ -153,7 +153,8 @@ class _HistoryTab extends StatelessWidget {
               ? const EmptyState(
                   icon: Icons.history,
                   title: 'Nada neste período',
-                  message: 'As atividades planejadas aparecem aqui com o que '
+                  message:
+                      'As atividades planejadas aparecem aqui com o que '
                       'realmente aconteceu em cada dia.',
                 )
               : ListView.separated(
@@ -184,7 +185,7 @@ class _HistoryTab extends StatelessWidget {
                             children: [
                               Text(
                                 '${friendlyDay(dateFromEpochDay(occ.scheduledDay), today)}'
-                                ' · ${formatMinute(occ.scheduledStart)}–${formatMinute(occ.scheduledEnd)}',
+                                ' · ${formatSpan(occ.scheduledStart, occ.scheduledEnd)}',
                                 style: const TextStyle(
                                   color: AppColors.textMuted,
                                 ),
@@ -308,7 +309,8 @@ class _IndicatorsTab extends StatelessWidget {
                 InfoRow(
                   icon: Icons.task_alt,
                   label: 'Conclusão total',
-                  value: '${(total.completionRate * 100).round()}% do planejado',
+                  value:
+                      '${(total.completionRate * 100).round()}% do planejado',
                 ),
                 InfoRow(
                   icon: Icons.timer_outlined,
