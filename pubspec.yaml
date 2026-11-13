@@ -1,14 +1,14 @@
 name: aplicativo_all
-description: "All: organização pessoal em 21 módulos (somente Android, offline)."
+description: "BrutAll: organização pessoal em 21 módulos (somente Android, offline)."
 publish_to: 'none'
 
-version: 2.0.0+2
+version: 3.0.0+3
 
 environment:
   sdk: ^3.13.7
 
-# Dependências pedidas na especificação, mais as auxiliares registradas
-# em DECISOES.md (drift_flutter, flutter_localizations, http).
+# Dependências do app (ver docs/DECISOES.md). Sem serviços em nuvem: o
+# backup no Google Drive foi removido na versão final.
 dependencies:
   flutter:
     sdk: flutter
@@ -18,9 +18,6 @@ dependencies:
   drift_flutter: ^0.3.1
   flutter_local_notifications: ^23.0.1
   flutter_riverpod: ^3.5.0
-  google_sign_in: ^7.2.0
-  googleapis: ^18.0.0
-  http: ^1.6.0
   permission_handler: ^13.0.2
   speech_to_text: ^7.5.0
   timezone: ^0.11.2
@@ -37,5 +34,5 @@ flutter:
   uses-material-design: true
 
   assets:
-    # Credenciais do backup no Google Drive (ver PENDENCIAS.md, etapa b).
-    - assets/config/google_drive.json
+    # Logotipo do BrutAll (cabeçalho do menu lateral).
+    - assets/brand/brutall.png

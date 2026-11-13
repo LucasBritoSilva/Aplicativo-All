@@ -1,9 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Somente para o backup manual no Google Drive. -->
-    <uses-permission android:name="android.permission.INTERNET"/>
-
     <!-- Limite de uso de apps: ler o tempo de uso (o usuário libera em
          "Acesso ao uso"), mostrar o contador flutuante e manter o serviço
          que o atualiza. Nenhum app é bloqueado. -->
@@ -36,10 +33,11 @@
     <!-- Captura de ideias por voz. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
 
-    <!-- Backup automático do Android desligado: os dados (inclusive o
-         cofre) não saem do aparelho sem o usuário pedir. -->
+    <!-- Backup automático e transferência entre aparelhos desligados: os
+         dados ficam só neste celular (o app não tem backup nem
+         restauração). -->
     <application
-        android:label="All"
+        android:label="BrutAll"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:allowBackup="false"
@@ -122,7 +120,8 @@
             <action android:name="android.intent.action.MAIN"/>
             <category android:name="android.intent.category.LAUNCHER"/>
         </intent>
-        <!-- Abrir links (desejos, WhatsApp) e o discador (contatos). -->
+        <!-- Abrir links (desejos, WhatsApp) e o discador (contatos) em
+             outros apps. O BrutAll em si não usa a internet. -->
         <intent>
             <action android:name="android.intent.action.VIEW"/>
             <data android:scheme="https"/>
