@@ -59,7 +59,11 @@ void main() {
     final cats = {
       for (final c in await db.select(db.mediaCategories).get()) c.id: c,
     };
-    expect(cats.values.map((c) => c.name).toSet(), {'Filmes', 'Séries', 'Animes'});
+    expect(cats.values.map((c) => c.name).toSet(), {
+      'Filmes',
+      'Séries',
+      'Animes',
+    });
 
     final items = await db.select(db.mediaItems).get();
     String categoryOf(String title) =>
@@ -74,11 +78,14 @@ void main() {
     await db.close();
   });
 
-  test('2.0.0 -> 3: limites antigos ficam no modo contador flutuante', () async {
-    final db = _v2Database();
-    final limit = await db.select(db.appLimits).getSingle();
-    expect(limit.limitMinutes, 60);
-    expect(limit.mode, LimitMode.overlay);
-    await db.close();
-  });
+  test(
+    '2.0.0 -> 3: limites antigos ficam no modo contador flutuante',
+    () async {
+      final db = _v2Database();
+      final limit = await db.select(db.appLimits).getSingle();
+      expect(limit.limitMinutes, 60);
+      expect(limit.mode, LimitMode.overlay);
+      await db.close();
+    },
+  );
 }
