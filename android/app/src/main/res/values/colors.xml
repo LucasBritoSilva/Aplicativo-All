@@ -2,4 +2,6 @@
 <resources>
     <!-- Mesmo fundo quase preto do app (tema escuro único). -->
     <color name="app_background">#FF0C0C0F</color>
+    <!-- Fundo do ícone adaptativo do BrutAll. -->
+    <color name="ic_launcher_background">#000000</color>
 </resources>
