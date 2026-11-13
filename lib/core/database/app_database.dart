@@ -84,6 +84,7 @@ part 'app_database.g.dart';
     WorkoutExercises,
     ExerciseLoadEntries,
     BodyWeightEntries,
+    MediaCategories,
     MediaItems,
     BibleChapterReads,
     AppLimits,
@@ -93,17 +94,79 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor])
     : super(executor ?? driftDatabase(name: 'aplicativo_all'));
 
-  /// Versão 2: primeira versão pública (All 2.0.0). A versão 1 era do app
-  /// original, com outro identificador; não existe migração entre elas.
+  /// Versão 2: All 2.0.0. Versão 3: BrutAll (categorias do Entretenimento
+  /// e modo de acompanhamento dos limites de apps). A versão 1 era do app
+  /// original, com outro identificador; não existe migração dela.
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (m) async {
+      await m.createAll();
+      await _createDefaultMediaCategories();
+    },
+    onUpgrade: (m, from, to) async {
+      if (from < 3) {
+        await m.createTable(mediaCategories);
+        await m.addColumn(mediaItems, mediaItems.categoryId);
+        await m.addColumn(appLimits, appLimits.mode);
+        await _migrateMediaToCategories();
+      }
+    },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
     },
   );
+
+  /// Categorias iniciais do Entretenimento (o usuário pode renomear ou
+  /// excluir; não são recriadas depois).
+  Future<({int movies, int series})> _createDefaultMediaCategories() async {
+    final movies = await into(mediaCategories).insert(
+      MediaCategoriesCompanion.insert(name: 'Filmes', position: const Value(0)),
+    );
+    final series = await into(mediaCategories).insert(
+      MediaCategoriesCompanion.insert(
+        name: 'Séries',
+        hasEpisodes: const Value(true),
+        position: const Value(1),
+      ),
+    );
+    return (movies: movies, series: series);
+  }
+
+  /// Versão 2 -> 3: cada título antigo vai para a categoria do seu tipo.
+  /// Só cria "Animes" se já houver animes cadastrados.
+  Future<void> _migrateMediaToCategories() async {
+    final ids = await _createDefaultMediaCategories();
+    await customUpdate(
+      "UPDATE media_items SET category_id = ? WHERE kind = 'movie'",
+      variables: [Variable<int>(ids.movies)],
+      updates: {mediaItems},
+    );
+    await customUpdate(
+      "UPDATE media_items SET category_id = ? WHERE kind = 'series'",
+      variables: [Variable<int>(ids.series)],
+      updates: {mediaItems},
+    );
+    final animes = await customSelect(
+      "SELECT COUNT(*) AS n FROM media_items WHERE kind = 'anime'",
+    ).getSingle();
+    if (animes.read<int>('n') > 0) {
+      final anime = await into(mediaCategories).insert(
+        MediaCategoriesCompanion.insert(
+          name: 'Animes',
+          hasEpisodes: const Value(true),
+          position: const Value(2),
+        ),
+      );
+      await customUpdate(
+        "UPDATE media_items SET category_id = ? WHERE kind = 'anime'",
+        variables: [Variable<int>(anime)],
+        updates: {mediaItems},
+      );
+    }
+  }
 
   /// Reexecuta [load] sempre que alguma das [tables] mudar.
   ///
