@@ -76,6 +76,10 @@ enum DayEntryKind {
 
   /// Continuação marcada para este dia.
   continuation,
+
+  /// Começou na véspera e termina neste dia (atravessa a meia-noite).
+  /// Aparece para mostrar a continuidade, mas não é contada de novo.
+  fromPreviousDay,
 }
 
 class DayEntry {
@@ -97,11 +101,31 @@ List<DayEntry> buildDayEntries(List<OccurrenceView> views, int day) {
   for (final v in views) {
     if (v.occ.scheduledDay == day) {
       out.add(
-        DayEntry(v, DayEntryKind.normal, v.occ.scheduledStart, v.occ.scheduledEnd),
+        DayEntry(
+          v,
+          DayEntryKind.normal,
+          v.occ.scheduledStart,
+          v.occ.scheduledEnd,
+        ),
       );
     } else if (v.occ.originalDay == day) {
       out.add(
-        DayEntry(v, DayEntryKind.movedAway, v.occ.plannedStart, v.occ.plannedEnd),
+        DayEntry(
+          v,
+          DayEntryKind.movedAway,
+          v.occ.plannedStart,
+          v.occ.plannedEnd,
+        ),
+      );
+    }
+    if (v.occ.scheduledDay == day - 1 && crossesMidnight(v.occ.scheduledEnd)) {
+      out.add(
+        DayEntry(
+          v,
+          DayEntryKind.fromPreviousDay,
+          0,
+          v.occ.scheduledEnd - minutesPerDay,
+        ),
       );
     }
     final r = v.resume;
@@ -112,6 +136,17 @@ List<DayEntry> buildDayEntries(List<OccurrenceView> views, int day) {
           DayEntryKind.continuation,
           r.scheduledStart ?? 0,
           r.scheduledEnd ?? 0,
+        ),
+      );
+    } else if (v.hasContinuation &&
+        r!.scheduledDay == day - 1 &&
+        crossesMidnight(r.scheduledEnd ?? 0)) {
+      out.add(
+        DayEntry(
+          v,
+          DayEntryKind.fromPreviousDay,
+          0,
+          (r.scheduledEnd ?? 0) - minutesPerDay,
         ),
       );
     }
@@ -251,8 +286,7 @@ class RoutineRepository {
           _db.routineActivities,
         )..where((a) => a.id.equals(id))).go();
       } else {
-        await (_db.update(_db.routineActivities)
-              ..where((a) => a.id.equals(id)))
+        await (_db.update(_db.routineActivities)..where((a) => a.id.equals(id)))
             .write(RoutineActivitiesCompanion(archivedDay: Value(today)));
       }
     });
@@ -372,12 +406,14 @@ class RoutineRepository {
 
   /// Tudo que aparece em um dia: o que acontece nele, o que saiu dele por
   /// reagendamento e as continuações marcadas para ele.
+  /// Inclui também o que começou na véspera, que pode atravessar a
+  /// meia-noite e aparecer neste dia.
   Future<List<OccurrenceView>> loadDay(int day) async {
-    final extra = await _continuationIds(day, day);
+    final extra = await _continuationIds(day - 1, day);
     final occs =
         await (_db.select(_db.routineOccurrences)..where(
               (o) =>
-                  o.scheduledDay.equals(day) |
+                  o.scheduledDay.isBetweenValues(day - 1, day) |
                   o.originalDay.equals(day) |
                   o.id.isIn(extra),
             ))
@@ -386,17 +422,19 @@ class RoutineRepository {
   }
 
   Stream<List<OccurrenceView>> watchDay(int day) async* {
-    await ensureRange(day, day);
+    await ensureRange(day - 1, day);
     yield* _db.watchTables(_tables, () => loadDay(day));
   }
 
+  /// Inclui a véspera de [fromDay], cujas atividades podem atravessar a
+  /// meia-noite e aparecer no primeiro dia.
   Future<List<OccurrenceView>> loadRange(int fromDay, int toDay) async {
-    final extra = await _continuationIds(fromDay, toDay);
+    final extra = await _continuationIds(fromDay - 1, toDay);
     final occs =
         await (_db.select(_db.routineOccurrences)
               ..where(
                 (o) =>
-                    o.scheduledDay.isBetweenValues(fromDay, toDay) |
+                    o.scheduledDay.isBetweenValues(fromDay - 1, toDay) |
                     o.id.isIn(extra),
               )
               ..orderBy([
@@ -482,34 +520,34 @@ class RoutineRepository {
     ];
   }
 
-  /// Blocos de tempo ocupados em um dia, para avisar conflitos.
-  Future<List<TimeBlock>> blocksOn(int day) async {
-    await ensureRange(day, day);
-    final views = await loadDay(day);
+  /// Blocos de tempo ocupados na véspera, no dia e no dia seguinte, para
+  /// avisar conflitos mesmo entre atividades que atravessam a meia-noite.
+  Future<List<TimeBlock>> blocksAround(int day) async {
+    await ensureRange(day - 1, day + 1);
+    final views = await loadRange(day - 1, day + 1);
     final out = <TimeBlock>[];
     for (final v in views) {
       final r = v.resume;
-      if (v.hasContinuation && r!.scheduledDay == day) {
+      if (v.hasContinuation) {
         out.add(
           TimeBlock(
             id: v.id,
             name: v.occ.name,
             kind: v.occ.kind,
-            day: day,
+            day: r!.scheduledDay!,
             start: r.scheduledStart ?? 0,
             end: r.scheduledEnd ?? 0,
           ),
         );
-      } else if (v.occ.scheduledDay == day &&
-          (v.occ.status == OccurrenceStatus.pending ||
-              v.occ.status == OccurrenceStatus.inProgress ||
-              v.occ.status == OccurrenceStatus.paused)) {
+      } else if ((v.occ.status == OccurrenceStatus.pending ||
+          v.occ.status == OccurrenceStatus.inProgress ||
+          v.occ.status == OccurrenceStatus.paused)) {
         out.add(
           TimeBlock(
             id: v.id,
             name: v.occ.name,
             kind: v.occ.kind,
-            day: day,
+            day: v.occ.scheduledDay,
             start: v.occ.scheduledStart,
             end: v.occ.scheduledEnd,
           ),
@@ -546,12 +584,14 @@ class RoutineRepository {
   )..where((o) => o.id.equals(id))).write(data);
 
   /// Para a contagem das sessões abertas. Com [close], encerra a sessão.
-  Future<void> _stopClock(int occId, DateTime now, {required bool close}) async {
-    final open =
-        await (_db.select(_db.routineSessions)..where(
-              (s) => s.occurrenceId.equals(occId) & s.endedAt.isNull(),
-            ))
-            .get();
+  Future<void> _stopClock(
+    int occId,
+    DateTime now, {
+    required bool close,
+  }) async {
+    final open = await (_db.select(
+      _db.routineSessions,
+    )..where((s) => s.occurrenceId.equals(occId) & s.endedAt.isNull())).get();
     for (final s in open) {
       await (_db.update(
         _db.routineSessions,
@@ -686,11 +726,8 @@ class RoutineRepository {
   }) => _db.transaction(() async {
     final occ = await _get(id);
     _require(occ, OccurrenceAction.reschedule);
-    if (end <= start) {
-      throw const RoutineStateError(
-        'O horário de término precisa ser depois do início.',
-      );
-    }
+    final spanError = validateSpan(start, end);
+    if (spanError != null) throw RoutineStateError(spanError);
     final same =
         day == occ.originalDay &&
         start == occ.plannedStart &&
@@ -757,10 +794,11 @@ class RoutineRepository {
   }) => _db.transaction(() async {
     final occ = await _get(id);
     _require(occ, OccurrenceAction.continueLater);
-    if (day != null && (start == null || end == null || end <= start)) {
-      throw const RoutineStateError(
-        'O horário de término precisa ser depois do início.',
-      );
+    if (day != null) {
+      final spanError = start == null || end == null
+          ? 'Escolha o início e o término.'
+          : validateSpan(start, end);
+      if (spanError != null) throw RoutineStateError(spanError);
     }
     await _stopClock(id, now, close: true);
     await _write(
@@ -820,11 +858,8 @@ class RoutineRepository {
     for (final entry in changes.entries) {
       final occ = await _get(entry.key);
       final slot = entry.value;
-      if (slot.end <= slot.start) {
-        throw const RoutineStateError(
-          'O horário de término precisa ser depois do início.',
-        );
-      }
+      final spanError = validateSpan(slot.start, slot.end);
+      if (spanError != null) throw RoutineStateError(spanError);
       if (occ.status == OccurrenceStatus.awaitingResume) {
         await (_db.update(_db.routineResumes)..where(
               (r) => r.occurrenceId.equals(occ.id) & r.scheduledDay.equals(day),
@@ -857,10 +892,8 @@ class RoutineRepository {
   // Tolerância de atraso
   // -------------------------------------------------------------------
 
-  Future<int> tolerance() => _settings.readInt(
-    SettingKeys.routineTolerance,
-    defaultToleranceMinutes,
-  );
+  Future<int> tolerance() =>
+      _settings.readInt(SettingKeys.routineTolerance, defaultToleranceMinutes);
 
   Future<void> setTolerance(int minutes) =>
       _settings.write(SettingKeys.routineTolerance, '$minutes');
@@ -885,9 +918,8 @@ final routineDayProvider = StreamProvider.autoDispose
 /// Ocorrências de um intervalo de dias (início, fim), inclusive.
 final routineRangeProvider = StreamProvider.autoDispose
     .family<List<OccurrenceView>, (int, int)>(
-      (ref, range) => ref
-          .watch(routineRepositoryProvider)
-          .watchRange(range.$1, range.$2),
+      (ref, range) =>
+          ref.watch(routineRepositoryProvider).watchRange(range.$1, range.$2),
     );
 
 final resumeListProvider = StreamProvider<List<OccurrenceView>>(
