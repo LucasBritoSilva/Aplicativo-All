@@ -137,7 +137,9 @@ class _VoiceCaptureScreenState extends ConsumerState<VoiceCaptureScreen> {
   void _onResult(SpeechRecognitionResult result) {
     if (!mounted) return;
     final words = result.recognizedWords;
-    final joined = _base.isEmpty || words.isEmpty ? '$_base$words' : '$_base $words';
+    final joined = _base.isEmpty || words.isEmpty
+        ? '$_base$words'
+        : '$_base $words';
     setState(() {
       _usedVoice = true;
       _text.text = joined;
@@ -239,7 +241,7 @@ class _VoiceCaptureScreenState extends ConsumerState<VoiceCaptureScreen> {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.info_outline,
                         size: 20,
                         color: AppColors.primary,

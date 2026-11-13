@@ -124,7 +124,7 @@ class ChallengesRepository {
       );
     } else if (!reached && c.completedAt != null) {
       await (_db.update(_db.challenges)..where((x) => x.id.equals(id))).write(
-        const ChallengesCompanion(completedAt: Value(null)),
+        ChallengesCompanion(completedAt: Value(null)),
       );
     }
   }

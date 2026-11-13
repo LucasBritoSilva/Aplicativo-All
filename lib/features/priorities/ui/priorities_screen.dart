@@ -27,7 +27,9 @@ class PrioritiesScreen extends ConsumerWidget {
       final r = await showQuickForm(
         context,
         title: 'Nova prioridade',
-        fields: const [TextSpec('title', 'Prioridade', required: true, autofocus: true)],
+        fields: const [
+          TextSpec('title', 'Prioridade', required: true, autofocus: true),
+        ],
       );
       if (r == null) return;
       try {
@@ -42,7 +44,9 @@ class PrioritiesScreen extends ConsumerWidget {
         context,
         title: 'Editar prioridade',
         deleteLabel: 'Excluir prioridade',
-        fields: [TextSpec('title', 'Prioridade', initial: p.title, required: true)],
+        fields: [
+          TextSpec('title', 'Prioridade', initial: p.title, required: true),
+        ],
       );
       if (r == null) return;
       if (r.deleted) {
@@ -103,8 +107,9 @@ class PrioritiesScreen extends ConsumerWidget {
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   buildDefaultDragHandles: false,
-                  onReorderItem: (from, to) =>
-                      repo.reorder(reorderIds([for (final p in list) p.id], from, to)),
+                  onReorderItem: (from, to) => repo.reorder(
+                    reorderIds([for (final p in list) p.id], from, to),
+                  ),
                   children: [
                     for (final (i, p) in list.indexed)
                       ListTile(
@@ -200,8 +205,12 @@ class _PrioritiesHistoryScreen extends ConsumerWidget {
                       ListTile(
                         dense: true,
                         leading: Icon(
-                          p.done ? Icons.check_circle : Icons.radio_button_unchecked,
-                          color: p.done ? AppColors.success : AppColors.textFaint,
+                          p.done
+                              ? Icons.check_circle
+                              : Icons.radio_button_unchecked,
+                          color: p.done
+                              ? AppColors.success
+                              : AppColors.textFaint,
                         ),
                         title: Text(p.title),
                       ),

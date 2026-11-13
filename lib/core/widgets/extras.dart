@@ -49,9 +49,7 @@ class StarRating extends StatelessWidget {
                       ? Icons.star_rounded
                       : Icons.star_outline_rounded,
                   size: size,
-                  color: i <= current
-                      ? AppColors.primary
-                      : AppColors.textFaint,
+                  color: i <= current ? AppColors.primary : AppColors.textFaint,
                 ),
               ),
             ),

@@ -104,7 +104,9 @@ class _UpdateValueDialogState extends State<_UpdateValueDialog> {
         controller: _controller,
         autofocus: true,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
+        inputFormatters: [
+          FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+        ],
         decoration: InputDecoration(
           labelText: 'Valor atual',
           suffixText: widget.goal.unit,
@@ -117,7 +119,8 @@ class _UpdateValueDialogState extends State<_UpdateValueDialog> {
           child: const Text('Cancelar'),
         ),
         TextButton(
-          onPressed: () => Navigator.pop(context, parseNumber(_controller.text)),
+          onPressed: () =>
+              Navigator.pop(context, parseNumber(_controller.text)),
           child: const Text('Salvar'),
         ),
       ],

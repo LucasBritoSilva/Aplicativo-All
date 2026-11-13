@@ -187,9 +187,8 @@ class BreakTimerScreen extends ConsumerWidget {
                               ? '${state.phase.label} terminado'
                               : switch (state.status) {
                                   BreakStatus.idle => 'Pronto para começar',
-                                  BreakStatus.running => isFocus
-                                      ? 'Em foco'
-                                      : 'Descansando',
+                                  BreakStatus.running =>
+                                    isFocus ? 'Em foco' : 'Descansando',
                                   BreakStatus.paused => 'Pausado',
                                 },
                           style: TextStyle(color: color),
@@ -244,9 +243,8 @@ class BreakTimerScreen extends ConsumerWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () => apply(
-                    state.next(today, completed: finished),
-                  ),
+                  onPressed: () =>
+                      apply(state.next(today, completed: finished)),
                   icon: const Icon(Icons.skip_next),
                   label: Text(isFocus ? 'Pular para a pausa' : 'Pular a pausa'),
                 ),

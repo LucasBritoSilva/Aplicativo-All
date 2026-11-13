@@ -23,8 +23,15 @@ class HabitsRepository {
         .watch();
   }
 
-  Future<void> save({int? id, required String name, required int target}) async {
-    final data = HabitsCompanion(name: Value(name), weeklyTarget: Value(target));
+  Future<void> save({
+    int? id,
+    required String name,
+    required int target,
+  }) async {
+    final data = HabitsCompanion(
+      name: Value(name),
+      weeklyTarget: Value(target),
+    );
     if (id == null) {
       await _db.into(_db.habits).insert(data);
     } else {
@@ -36,11 +43,9 @@ class HabitsRepository {
   Future<void> toggle(int habitId, DateTime day) async {
     final d = dateOnly(day);
     await _db.transaction(() async {
-      final deleted =
-          await (_db.delete(_db.habitChecks)..where(
-                (c) => c.habitId.equals(habitId) & c.day.equals(d),
-              ))
-              .go();
+      final deleted = await (_db.delete(
+        _db.habitChecks,
+      )..where((c) => c.habitId.equals(habitId) & c.day.equals(d))).go();
       if (deleted == 0) {
         await _db
             .into(_db.habitChecks)

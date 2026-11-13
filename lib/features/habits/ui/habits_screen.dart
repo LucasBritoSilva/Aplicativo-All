@@ -234,7 +234,7 @@ class _DayDot extends StatelessWidget {
                 border: Border.all(color: border, width: 1.5),
               ),
               child: checked
-                  ? const Icon(Icons.check, size: 18, color: AppColors.onPrimary)
+                  ? Icon(Icons.check, size: 18, color: AppColors.onPrimary)
                   : Text(
                       '${day.day}',
                       style: TextStyle(
@@ -316,9 +316,7 @@ class _HabitFormState extends ConsumerState<_HabitForm> {
               IconButton(
                 tooltip: 'Menos',
                 icon: const Icon(Icons.remove),
-                onPressed: _target > 1
-                    ? () => setState(() => _target--)
-                    : null,
+                onPressed: _target > 1 ? () => setState(() => _target--) : null,
               ),
               Expanded(
                 child: Text(
@@ -330,9 +328,7 @@ class _HabitFormState extends ConsumerState<_HabitForm> {
               IconButton(
                 tooltip: 'Mais',
                 icon: const Icon(Icons.add),
-                onPressed: _target < 7
-                    ? () => setState(() => _target++)
-                    : null,
+                onPressed: _target < 7 ? () => setState(() => _target++) : null,
               ),
             ],
           ),

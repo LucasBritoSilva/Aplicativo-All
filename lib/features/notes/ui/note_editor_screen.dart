@@ -7,9 +7,9 @@ import '../../../core/widgets/common.dart';
 import '../data/notes_repository.dart';
 
 void openNoteEditor(BuildContext context, {Note? note}) {
-  Navigator.of(context).push(
-    MaterialPageRoute<void>(builder: (_) => NoteEditorScreen(note: note)),
-  );
+  Navigator.of(
+    context,
+  ).push(MaterialPageRoute<void>(builder: (_) => NoteEditorScreen(note: note)));
 }
 
 /// Editor de anotação: título opcional e texto livre.

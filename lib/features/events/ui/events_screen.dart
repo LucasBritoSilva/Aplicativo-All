@@ -64,9 +64,8 @@ Future<int?> openEventForm(
     if (ok) {
       await repo.deleteEvent(e.id);
       if (context.mounted) {
-        Navigator.of(
-          context,
-        ).popUntil((r) => r.settings.name == 'eventos' || r.isFirst);
+        Navigator.of(context)
+            .popUntil((r) => r.settings.name == 'eventos' || r.isFirst);
       }
     }
     return null;
@@ -155,7 +154,7 @@ class _EventsScreenState extends ConsumerState<EventsScreen> {
                         children: [
                           Text(
                             '${date.day}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.w700,
                               color: AppColors.primary,

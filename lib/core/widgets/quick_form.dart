@@ -286,8 +286,7 @@ class _QuickFormState extends State<_QuickForm> {
                 ButtonSegment(value: v, label: Text(label)),
             ],
             selected: {value},
-            onSelectionChanged: (s) =>
-                setState(() => _values[f.key] = s.first),
+            onSelectionChanged: (s) => setState(() => _values[f.key] = s.first),
           ),
         ],
       );
@@ -329,10 +328,7 @@ class _QuickFormState extends State<_QuickForm> {
               RegExp(f.decimal ? r'[0-9.,\-]' : r'[0-9\-]'),
             ),
           ],
-          decoration: InputDecoration(
-            labelText: f.label,
-            suffixText: f.suffix,
-          ),
+          decoration: InputDecoration(labelText: f.label, suffixText: f.suffix),
         );
       case DateSpec():
         final date = _values[f.key] as DateTime?;
@@ -370,9 +366,7 @@ class _QuickFormState extends State<_QuickForm> {
                   : TimeOfDay(hour: minute ~/ 60, minute: minute % 60),
             );
             if (picked != null) {
-              setState(
-                () => _values[f.key] = picked.hour * 60 + picked.minute,
-              );
+              setState(() => _values[f.key] = picked.hour * 60 + picked.minute);
             }
           },
           onClear: f.required || minute == null
@@ -416,10 +410,8 @@ class _QuickFormState extends State<_QuickForm> {
           const SizedBox(height: 8),
           TextButton(
             style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-            onPressed: () => Navigator.pop(
-              context,
-              FormResult(const {}, deleted: true),
-            ),
+            onPressed: () =>
+                Navigator.pop(context, FormResult(const {}, deleted: true)),
             child: Text(widget.deleteLabel!),
           ),
         ],

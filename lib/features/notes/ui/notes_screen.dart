@@ -118,9 +118,8 @@ class _NoteCard extends ConsumerWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => openNoteEditor(context, note: note),
-        onLongPress: () => ref
-            .read(notesRepositoryProvider)
-            .setPinned(note.id, !note.pinned),
+        onLongPress: () =>
+            ref.read(notesRepositoryProvider).setPinned(note.id, !note.pinned),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -148,15 +147,11 @@ class _NoteCard extends ConsumerWidget {
               Row(
                 children: [
                   if (note.pinned) ...[
-                    const Icon(
-                      Icons.push_pin,
-                      size: 14,
-                      color: AppColors.primary,
-                    ),
+                    Icon(Icons.push_pin, size: 14, color: AppColors.primary),
                     const SizedBox(width: 4),
                   ],
                   if (note.fromVoice) ...[
-                    const Icon(Icons.mic, size: 14, color: AppColors.primary),
+                    Icon(Icons.mic, size: 14, color: AppColors.primary),
                     const SizedBox(width: 4),
                   ],
                   Text(

@@ -229,7 +229,7 @@ class _ContactsScreenState extends ConsumerState<ContactsScreen> {
                                     backgroundColor: AppColors.surfaceHigh,
                                     child: Text(
                                       c.name.characters.first.toUpperCase(),
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         color: AppColors.primary,
                                       ),
                                     ),

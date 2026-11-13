@@ -412,7 +412,11 @@ class _TaskFormState extends ConsumerState<_TaskForm> {
               Checkbox(
                 value: s.done,
                 onChanged: (v) => setState(
-                  () => _subtasks[i] = (id: s.id, title: s.title, done: v ?? false),
+                  () => _subtasks[i] = (
+                    id: s.id,
+                    title: s.title,
+                    done: v ?? false,
+                  ),
                 ),
               ),
               Expanded(child: Text(s.title)),
@@ -449,7 +453,9 @@ class _TaskFormState extends ConsumerState<_TaskForm> {
           const SizedBox(height: 8),
           OutlinedButton(
             onPressed: () async {
-              await ref.read(tasksRepositoryProvider).setDone(task.id, !task.done);
+              await ref
+                  .read(tasksRepositoryProvider)
+                  .setDone(task.id, !task.done);
               if (context.mounted) Navigator.pop(context);
             },
             child: Text(task.done ? 'Reabrir tarefa' : 'Concluir tarefa'),

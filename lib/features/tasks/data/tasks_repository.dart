@@ -32,16 +32,19 @@ class TasksRepository {
 
   Future<List<TaskWithSubtasks>> _load() async {
     final tasks = sortTasks(await _db.select(_db.tasks).get(), taskKey);
-    final subs = await (_db.select(_db.taskSubtasks)..orderBy([
-          (s) => OrderingTerm.asc(s.position),
-          (s) => OrderingTerm.asc(s.id),
-        ]))
-        .get();
+    final subs =
+        await (_db.select(_db.taskSubtasks)..orderBy([
+              (s) => OrderingTerm.asc(s.position),
+              (s) => OrderingTerm.asc(s.id),
+            ]))
+            .get();
     final byTask = <int, List<TaskSubtask>>{};
     for (final s in subs) {
       (byTask[s.taskId] ??= []).add(s);
     }
-    return [for (final t in tasks) TaskWithSubtasks(t, byTask[t.id] ?? const [])];
+    return [
+      for (final t in tasks) TaskWithSubtasks(t, byTask[t.id] ?? const []),
+    ];
   }
 
   /// Todas as tarefas, já ordenadas por prioridade e prazo.

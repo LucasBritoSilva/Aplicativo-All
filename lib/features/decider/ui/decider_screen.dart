@@ -115,7 +115,7 @@ class _DeciderScreenState extends ConsumerState<DeciderScreen> {
         overflow: TextOverflow.ellipsis,
         style: value == null
             ? const TextStyle(color: AppColors.textMuted)
-            : const TextStyle(
+            : TextStyle(
                 fontSize: 30,
                 fontWeight: FontWeight.w700,
                 color: AppColors.primary,

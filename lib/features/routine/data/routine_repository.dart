@@ -604,8 +604,8 @@ class RoutineRepository {
               now: now,
             ),
           ),
-          runningSince: const Value(null),
-          endedAt: close ? Value(now) : const Value.absent(),
+          runningSince: Value(null),
+          endedAt: close ? Value(now) : Value.absent(),
         ),
       );
     }
@@ -627,16 +627,14 @@ class RoutineRepository {
         );
     await _write(
       id,
-      const RoutineOccurrencesCompanion(
-        status: Value(OccurrenceStatus.inProgress),
-      ),
+      RoutineOccurrencesCompanion(status: Value(OccurrenceStatus.inProgress)),
     );
     // A continuação deixa de ter horário marcado, mas a data de entrada
     // na Lista de Retomadas é preservada.
     await (_db.update(
       _db.routineResumes,
     )..where((r) => r.occurrenceId.equals(id))).write(
-      const RoutineResumesCompanion(
+      RoutineResumesCompanion(
         scheduledDay: Value(null),
         scheduledStart: Value(null),
         scheduledEnd: Value(null),
@@ -650,7 +648,7 @@ class RoutineRepository {
     await _stopClock(id, now, close: false);
     await _write(
       id,
-      const RoutineOccurrencesCompanion(status: Value(OccurrenceStatus.paused)),
+      RoutineOccurrencesCompanion(status: Value(OccurrenceStatus.paused)),
     );
   });
 
@@ -681,9 +679,7 @@ class RoutineRepository {
     }
     await _write(
       id,
-      const RoutineOccurrencesCompanion(
-        status: Value(OccurrenceStatus.inProgress),
-      ),
+      RoutineOccurrencesCompanion(status: Value(OccurrenceStatus.inProgress)),
     );
   });
 
@@ -803,7 +799,7 @@ class RoutineRepository {
     await _stopClock(id, now, close: true);
     await _write(
       id,
-      const RoutineOccurrencesCompanion(
+      RoutineOccurrencesCompanion(
         status: Value(OccurrenceStatus.awaitingResume),
       ),
     );

@@ -16,10 +16,7 @@ final reminderPermissionsProvider =
       final perms = ref.watch(permissionServiceProvider);
       final notif = await perms.notificationStatus();
       final exact = await perms.exactAlarmsAllowed();
-      return (
-        notifications: notif == PermissionState.granted,
-        exact: exact,
-      );
+      return (notifications: notif == PermissionState.granted, exact: exact);
     });
 
 class RemindersScreen extends ConsumerStatefulWidget {
@@ -102,8 +99,7 @@ class _RemindersScreenState extends ConsumerState<RemindersScreen> {
                   child: EmptyState(
                     icon: Icons.notifications_none,
                     title: 'Nenhum lembrete',
-                    message:
-                        'Toque no botão para criar um lembrete com data e hora.',
+                    message: 'Toque no botão para criar um lembrete com data e hora.',
                   ),
                 ),
               ],
@@ -163,7 +159,9 @@ class _RemindersScreenState extends ConsumerState<RemindersScreen> {
   /// Abre a tela "Alarmes e lembretes". Ao voltar, o app confere a
   /// permissão de novo e reagenda tudo no modo certo (ver App).
   Future<void> _askExact() async {
-    final opened = await ref.read(permissionServiceProvider).requestExactAlarms();
+    final opened = await ref
+        .read(permissionServiceProvider)
+        .requestExactAlarms();
     if (!opened && mounted) {
       showMessage(
         context,

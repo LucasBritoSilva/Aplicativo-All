@@ -146,7 +146,8 @@ class BreakState {
     if (raw == null || raw.isEmpty) return const BreakState();
     try {
       final m = jsonDecode(raw) as Map<String, Object?>;
-      final status = BreakStatus.values.asNameMap()[m['status']] ?? BreakStatus.idle;
+      final status =
+          BreakStatus.values.asNameMap()[m['status']] ?? BreakStatus.idle;
       final endsAtMs = m['endsAt'] as int?;
       return BreakState(
         focusMinutes: (m['focus'] as int?) ?? 50,

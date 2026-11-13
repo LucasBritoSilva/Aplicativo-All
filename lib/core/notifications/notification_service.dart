@@ -51,8 +51,8 @@ class NotificationService {
   /// Conteúdo (payload) das notificações tocadas com o app aberto.
   Stream<String> get taps => _taps.stream;
 
-  AndroidFlutterLocalNotificationsPlugin? get _android =>
-      _plugin.resolvePlatformSpecificImplementation<
+  AndroidFlutterLocalNotificationsPlugin? get _android => _plugin
+      .resolvePlatformSpecificImplementation<
         AndroidFlutterLocalNotificationsPlugin
       >();
 

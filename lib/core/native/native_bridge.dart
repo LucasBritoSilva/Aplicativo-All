@@ -179,7 +179,9 @@ class NativeBridge {
             icon: m['icon'] as Uint8List?,
           ),
       ];
-      apps.sort((a, b) => a.label.toLowerCase().compareTo(b.label.toLowerCase()));
+      apps.sort(
+        (a, b) => a.label.toLowerCase().compareTo(b.label.toLowerCase()),
+      );
       return apps;
     } on MissingPluginException {
       return const [];

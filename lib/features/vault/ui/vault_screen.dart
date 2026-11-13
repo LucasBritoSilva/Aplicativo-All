@@ -271,7 +271,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.lock, size: 56, color: AppColors.primary),
+            Icon(Icons.lock, size: 56, color: AppColors.primary),
             const SizedBox(height: 16),
             Text(
               created ? 'Cofre trancado' : 'Criar o cofre',

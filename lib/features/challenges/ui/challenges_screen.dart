@@ -243,7 +243,7 @@ class _ChallengeCard extends ConsumerWidget {
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
                     'Começa em ${formatDate(dateFromEpochDay(c.startDay))}',
-                    style: const TextStyle(color: AppColors.primary),
+                    style: TextStyle(color: AppColors.primary),
                   ),
                 )
               else if (c.completedAt == null) ...[

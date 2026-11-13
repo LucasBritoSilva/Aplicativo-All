@@ -159,7 +159,7 @@ class _RoutineScreenState extends ConsumerState<RoutineScreen> {
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                         if (_day != today)
-                          const Text(
+                          Text(
                             'Toque para voltar a hoje',
                             style: TextStyle(
                               fontSize: 12,
@@ -397,7 +397,7 @@ class _FocusCard extends ConsumerWidget {
                   Expanded(
                     child: Text(
                       running || paused ? 'AGORA' : 'PRÓXIMA ATIVIDADE',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         letterSpacing: 1.1,
                         fontWeight: FontWeight.w600,
@@ -587,7 +587,7 @@ class _EntryCard extends ConsumerWidget {
                       children: [
                         Pill(kindShort(occ.kind), icon: kindIcon(occ.kind)),
                         if (moved)
-                          const Pill(
+                          Pill(
                             'Reagendada',
                             color: AppColors.primaryDim,
                             icon: Icons.event_repeat,
