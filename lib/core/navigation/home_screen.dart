@@ -7,36 +7,54 @@ import '../utils/today_provider.dart';
 import '../widgets/common.dart';
 import 'app_drawer.dart';
 import 'app_modules.dart';
+import 'module_actions.dart';
+import 'module_prefs.dart';
 import 'recent_modules.dart';
 
-/// Tela inicial: grade com os 6 módulos abertos mais recentemente.
+/// Tela inicial: módulos fixados e os 6 módulos usados mais recentemente.
 ///
 /// Abrir esta tela não conta como acesso e não muda a ordem. Enquanto não
-/// houver seis acessos, as posições vazias mostram sugestões, com
-/// aparência diferente dos recentes.
+/// houver histórico, os recentes mostram sugestões, com aparência
+/// diferente. Toque longo num atalho para fixar, desafixar ou ocultar.
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final today = ref.watch(todayProvider);
-    final recents = ref.watch(recentModulesProvider).value ?? const <String>[];
-    final suggestions = suggestedModules(recents, defaultModuleSuggestions);
+    final layout = buildHomeLayout(
+      history: ref.watch(recentModulesProvider).value ?? const <String>[],
+      pinned: ref.watch(pinnedModulesProvider),
+      hidden: ref.watch(hiddenModulesProvider),
+      defaults: defaultModuleSuggestions,
+    );
 
-    final tiles = <Widget>[
-      for (final id in recents)
+    Widget grid(List<Widget> tiles) => GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 12,
+      crossAxisSpacing: 12,
+      childAspectRatio: 1.35,
+      children: tiles,
+    );
+
+    List<Widget> tiles(List<String> ids, _TileStyle style) => [
+      for (final id in ids)
         if (moduleById(id) case final module?)
-          _ModuleTile(module: module, suggestion: false),
-      for (final id in suggestions)
-        if (moduleById(id) case final module?)
-          _ModuleTile(module: module, suggestion: true),
+          _ModuleTile(module: module, style: style),
+    ];
+
+    final recentTiles = [
+      ...tiles(layout.recents, _TileStyle.recent),
+      ...tiles(layout.suggestions, _TileStyle.suggestion),
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('All')),
+      appBar: AppBar(title: const Text('BrutAll')),
       drawer: const AppDrawer(),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
@@ -45,20 +63,38 @@ class HomeScreen extends ConsumerWidget {
               style: const TextStyle(color: AppColors.textMuted),
             ),
           ),
+          if (layout.pinned.isNotEmpty) ...[
+            const SectionLabel(
+              'Fixados',
+              padding: EdgeInsets.fromLTRB(4, 20, 4, 10),
+            ),
+            grid(tiles(layout.pinned, _TileStyle.pinned)),
+          ],
           SectionLabel(
-            recents.isEmpty ? 'Sugestões para começar' : 'Recentes',
+            layout.recents.isEmpty && layout.suggestions.isNotEmpty
+                ? 'Sugestões para começar'
+                : 'Recentes',
             padding: const EdgeInsets.fromLTRB(4, 20, 4, 10),
           ),
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: 1.35,
-            children: tiles,
+          if (recentTiles.isEmpty)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(4, 0, 4, 8),
+              child: Text(
+                'Os módulos que você abrir aparecem aqui.',
+                style: TextStyle(color: AppColors.textMuted),
+              ),
+            )
+          else
+            grid(recentTiles),
+          const SizedBox(height: 12),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 4),
+            child: Text(
+              'Toque e segure um atalho para fixar, desafixar ou ocultar.',
+              style: TextStyle(color: AppColors.textFaint, fontSize: 12),
+            ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
           Builder(
             builder: (context) => OutlinedButton.icon(
               onPressed: () => Scaffold.of(context).openDrawer(),
@@ -72,14 +108,17 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
+enum _TileStyle { pinned, recent, suggestion }
+
 class _ModuleTile extends ConsumerWidget {
-  const _ModuleTile({required this.module, required this.suggestion});
+  const _ModuleTile({required this.module, required this.style});
 
   final AppModule module;
-  final bool suggestion;
+  final _TileStyle style;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final suggestion = style == _TileStyle.suggestion;
     final color = suggestion ? AppColors.textMuted : AppColors.primary;
     return Material(
       color: suggestion ? Colors.transparent : AppColors.surface,
@@ -92,6 +131,7 @@ class _ModuleTile extends ConsumerWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => openModule(Navigator.of(context), ref, module),
+        onLongPress: () => showModuleOptions(context, ref, module),
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Column(
@@ -102,15 +142,21 @@ class _ModuleTile extends ConsumerWidget {
                   Icon(module.icon, color: color, size: 28),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: suggestion
-                        ? const Align(
-                            alignment: Alignment.centerRight,
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Pill('Sugestão'),
-                            ),
-                          )
-                        : const SizedBox.shrink(),
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: switch (style) {
+                        _TileStyle.suggestion => const FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Pill('Sugestão'),
+                        ),
+                        _TileStyle.pinned => Icon(
+                          Icons.push_pin,
+                          size: 16,
+                          color: AppColors.primary,
+                        ),
+                        _TileStyle.recent => const SizedBox.shrink(),
+                      },
+                    ),
                   ),
                 ],
               ),
