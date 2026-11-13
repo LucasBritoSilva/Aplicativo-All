@@ -231,8 +231,7 @@ final List<AppModule> appModules = [
   ),
   AppModule(
     id: 'midia',
-    title: 'Filmes, séries e animes',
-    shortTitle: 'Filmes e séries',
+    title: 'Entretenimento',
     icon: Icons.movie_outlined,
     category: ModuleCategory.saude,
     builder: (_) => const MediaScreen(),
