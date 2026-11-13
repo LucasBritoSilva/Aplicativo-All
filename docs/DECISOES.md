@@ -1,6 +1,62 @@
 # Decisões técnicas
 
-Registro das escolhas feitas na versão 2.0.0 (12/11/2026) e do motivo.
+Registro das escolhas feitas e do motivo. A versão final (BrutAll, 3.0.0,
+13/11/2026) está na primeira seção; as seguintes vêm da versão 2.0.0.
+
+## Versão final: BrutAll
+
+- **Nome:** BrutAll (antes "All"). O `applicationId`
+  (`io.github.lucasbritosilva.aplicativoall`), a chave de assinatura e a
+  URL do repositório foram mantidos, para o BrutAll instalar por cima da
+  2.0.0 sem perder dados. Versão técnica 3.0.0 (código 3); ela não aparece
+  na interface.
+- **Telas que não atualizavam:** a causa era o `watchTables`. O drift
+  reaproveita streams iguais pela consulta SQL e pelos valores, sem olhar as
+  tabelas observadas. Todas as consultas combinadas usavam `SELECT 1`, então
+  a primeira criada (em geral a da rotina) passava a valer para Tarefas,
+  Desejos, Disciplinas e Fichas, que deixavam de ser avisadas das mudanças.
+  Agora cada conjunto de tabelas entra como valor da consulta e tem o seu
+  próprio stream (teste em `test/reactivity_test.dart`).
+- **Botão de alarmes:** o `permission_handler` consulta se a permissão está
+  declarada no manifesto. Como a `SCHEDULE_EXACT_ALARM` vai só até o
+  Android 12 (`maxSdkVersion 32`), no 13+ ela some da lista do app e o
+  plugin respondia "negada" sem abrir nada. Agora a consulta é direta no
+  `AlarmManager.canScheduleExactAlarms()` e o botão abre
+  `ACTION_REQUEST_SCHEDULE_EXACT_ALARM`. Ao voltar para o app, avisos e
+  rotina são reagendados no modo certo.
+- **Rotina após a meia-noite:** ver [ROTINA.md](ROTINA.md). Término acima de
+  1440 minutos = dia seguinte; sem mudança de tabela.
+- **Limite de apps:** cada app tem um modo (`overlay` ou `notify`), gravado
+  numa coluna nova. O mesmo serviço em primeiro plano atende os dois modos;
+  a notificação de limite atingido é registrada por dia e por app para não
+  repetir.
+- **Cor do aplicativo:** `AppColors.primary` virou variável; o tema e todas
+  as telas abertas são redesenhados na hora da troca. Cores de estado
+  (erro, sucesso, atenção) não mudam. A escolha fica no banco.
+- **Fixar e ocultar:** listas de ids no banco. Ocultar também desafixa. O
+  histórico de recentes guarda 30 acessos para sempre sobrarem 6 recentes
+  depois de tirar fixados e ocultos.
+- **Entretenimento:** tabela de categorias (`media_categories`) com a opção
+  "acompanhar episódios". Instalação nova cria Filmes e Séries; a migração
+  da 2.0.0 coloca cada título na categoria do seu tipo antigo e só cria
+  "Animes" se já havia animes. Excluir categoria com títulos exige escolher
+  mover ou confirmar a exclusão.
+- **Banco versão 3:** migração com `createTable`/`addColumn`, testada em
+  `test/migration_test.dart` a partir das tabelas da 2.0.0.
+- **Rodapé:** um componente (`AppFooter`) colocado pelo `builder` do
+  `MaterialApp`, abaixo de todas as rotas, numa faixa própria que respeita a
+  área segura e some com o teclado aberto.
+- **Backup removido:** código do Google Drive, dependências
+  (`google_sign_in`, `googleapis`, `http`), arquivo de configuração e a
+  permissão `INTERNET` saíram. O app não tem exportação, importação nem
+  restauração; o backup automático e a transferência do Android seguem
+  desligados.
+- **Versão e atualizações:** nenhuma tela mostra versão ou oferece
+  atualização.
+- **Ícone:** gerado da arte do BrutAll, com ícone adaptativo (fundo preto e
+  arte em 62% da camada, inteira mesmo na máscara redonda).
+
+## Versão 2.0.0 (All)
 
 ## Fonte e reconstrução
 
