@@ -70,7 +70,13 @@ class _Content extends ConsumerWidget {
 
     String slot(int day, int start, int end) =>
         '${friendlyDay(dateFromEpochDay(day), today)} · '
-        '${formatMinute(start)}–${formatMinute(end)}';
+        '${formatSpan(start, end)}';
+
+    /// "segunda-feira, 23:00" no dia em que o minuto cai.
+    String moment(int day, int minute) {
+      final d = dateFromEpochDay(day + minute ~/ minutesPerDay);
+      return '${weekdayLong(d)}, ${formatDayMonthNumeric(d)}, ${formatMinute(minute)}';
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -94,6 +100,18 @@ class _Content extends ConsumerWidget {
               '${slot(occ.originalDay, occ.plannedStart, occ.plannedEnd)} '
               '(${formatDuration(planned)})',
         ),
+        if (crossesMidnight(occ.scheduledEnd)) ...[
+          InfoRow(
+            icon: Icons.play_arrow,
+            label: 'Início',
+            value: moment(occ.scheduledDay, occ.scheduledStart),
+          ),
+          InfoRow(
+            icon: Icons.stop,
+            label: 'Término',
+            value: moment(occ.scheduledDay, occ.scheduledEnd),
+          ),
+        ],
         if (occ.rescheduled)
           InfoRow(
             icon: Icons.event_repeat,
@@ -120,7 +138,8 @@ class _Content extends ConsumerWidget {
           InfoRow(
             icon: Icons.flag_outlined,
             label: 'Encerrada em',
-            value: '${formatDate(occ.closedAt!)} às ${formatTime(occ.closedAt!)}',
+            value:
+                '${formatDate(occ.closedAt!)} às ${formatTime(occ.closedAt!)}',
           ),
         if (occ.timerEnabled && occ.kind != ActivityKind.rest) ...[
           const SizedBox(height: 12),
@@ -161,7 +180,11 @@ class _Content extends ConsumerWidget {
     return '$base · ${formatDuration(secs)}';
   }
 
-  List<Widget> _actions(BuildContext context, WidgetRef ref, DisplayState state) {
+  List<Widget> _actions(
+    BuildContext context,
+    WidgetRef ref,
+    DisplayState state,
+  ) {
     final actions = ref.read(routineActionsProvider);
     final id = view.id;
     const gap = SizedBox(height: 8);
@@ -179,7 +202,10 @@ class _Content extends ConsumerWidget {
           label: Text(label),
         );
 
-    Future<void> closeWith(Future<void> Function() action, String message) async {
+    Future<void> closeWith(
+      Future<void> Function() action,
+      String message,
+    ) async {
       final ok = await runRoutineAction(context, action);
       if (ok && context.mounted) {
         Navigator.pop(context);
@@ -427,7 +453,10 @@ class _Content extends ConsumerWidget {
     }
   }
 
-  Future<void> _scheduleContinuation(BuildContext context, WidgetRef ref) async {
+  Future<void> _scheduleContinuation(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
     final actions = ref.read(routineActionsProvider);
     final current = DateTime.now();
     // Sugere o tempo que falta (ou a duração planejada, sem cronômetro).
