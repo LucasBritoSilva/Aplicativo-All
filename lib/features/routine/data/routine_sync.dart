@@ -18,6 +18,10 @@ class RoutineSync {
   final RoutineRepository _repo;
   final NotificationService _notifications;
 
+  /// Situação do alarme exato na última sincronização. Se mudar (o usuário
+  /// liberou ou revogou), tudo é reagendado no modo novo.
+  bool? _lastExact;
+
   /// Gera as ocorrências que faltam e confere as notificações.
   Future<void> run() async {
     try {
@@ -38,6 +42,9 @@ class RoutineSync {
         occurrences: await _repo.loadNotifiable(epochDay(now)),
         now: now,
       );
+      final exact = await _notifications.canScheduleExact();
+      final modeChanged = _lastExact != null && _lastExact != exact;
+      _lastExact = exact;
       final pending = await _notifications.pendingPayloads();
       final wanted = {for (final d in desired) d.id};
       for (final id in pending.keys) {
@@ -47,7 +54,7 @@ class RoutineSync {
       }
       for (final d in desired) {
         // Mesmo id e mesmo horário: já está agendada.
-        if (pending[d.id] == d.payload) continue;
+        if (!modeChanged && pending[d.id] == d.payload) continue;
         await _notifications.schedule(
           id: d.id,
           title: d.title,

@@ -10,6 +10,7 @@ import 'core/navigation/recent_modules.dart';
 import 'core/notifications/notification_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/today_provider.dart';
+import 'features/reminders/data/reminders_repository.dart';
 import 'features/routine/data/routine_sync.dart';
 import 'features/routine/domain/routine_logic.dart';
 import 'features/routine/ui/routine_screen.dart';
@@ -29,10 +30,14 @@ class App extends ConsumerStatefulWidget {
 
 class _AppState extends ConsumerState<App> {
   StreamSubscription<String>? _taps;
+  late final AppLifecycleListener _lifecycle;
 
   @override
   void initState() {
     super.initState();
+    // Ao voltar para o app (por exemplo, das configurações do Android), as
+    // permissões podem ter mudado: reagenda avisos no modo certo.
+    _lifecycle = AppLifecycleListener(onResume: _resyncNotifications);
     _taps = ref.read(notificationServiceProvider).taps.listen(_openPayload);
     final payload = widget.launchPayload;
     if (payload != null) {
@@ -43,7 +48,17 @@ class _AppState extends ConsumerState<App> {
   @override
   void dispose() {
     _taps?.cancel();
+    _lifecycle.dispose();
     super.dispose();
+  }
+
+  Future<void> _resyncNotifications() async {
+    try {
+      await ref.read(reminderSchedulerProvider).resync();
+      await ref.read(routineSyncProvider).syncNotifications();
+    } catch (e) {
+      debugPrint('Falha ao reagendar avisos: $e');
+    }
   }
 
   /// Notificação da rotina: abre a atividade correspondente.
