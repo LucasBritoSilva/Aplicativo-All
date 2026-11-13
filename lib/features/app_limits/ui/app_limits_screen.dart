@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/native/native_bridge.dart';
+import '../../../core/permissions/permission_service.dart';
 import '../../../core/settings/settings_repository.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/text.dart';
@@ -31,6 +32,7 @@ class AppLimitsRepository {
     required String packageName,
     required String label,
     required int minutes,
+    required LimitMode mode,
   }) => _db
       .into(_db.appLimits)
       .insertOnConflictUpdate(
@@ -38,6 +40,7 @@ class AppLimitsRepository {
           packageName: packageName,
           label: label,
           limitMinutes: minutes,
+          mode: Value(mode),
         ),
       );
 
@@ -68,6 +71,15 @@ class AppLimitsRepository {
             enabled: l.enabled,
           ),
       ]),
+      modes: activeModes([
+        for (final l in limits)
+          (
+            packageName: l.packageName,
+            limitMinutes: l.limitMinutes,
+            enabled: l.enabled,
+            mode: l.mode.name,
+          ),
+      ]),
     );
   }
 }
@@ -87,8 +99,9 @@ final appLimitsProvider = StreamProvider<List<AppLimit>>(
 /// Limite de uso de aplicativos: acompanhamento, sem bloqueio.
 ///
 /// O tempo vem das estatísticas de uso do Android (permissão "Acesso ao
-/// uso"). O contador flutuante sobre o app monitorado usa a permissão
-/// "Sobrepor a outros apps" e um serviço com notificação fixa, que o
+/// uso"). Cada app tem um modo: contador flutuante (permissão "Sobrepor a
+/// outros apps") ou uma notificação ao atingir o limite (permissão de
+/// notificações). Os dois usam um serviço com notificação fixa, que o
 /// usuário liga e desliga aqui.
 class AppLimitsScreen extends ConsumerStatefulWidget {
   const AppLimitsScreen({super.key});
@@ -102,6 +115,7 @@ class _AppLimitsScreenState extends ConsumerState<AppLimitsScreen> {
   Timer? _timer;
   bool? _usageAccess;
   bool? _overlay;
+  bool? _notifications;
   bool _monitorWanted = false;
   bool _monitorRunning = false;
   Map<String, int> _usage = const {};
@@ -126,6 +140,9 @@ class _AppLimitsScreenState extends ConsumerState<AppLimitsScreen> {
   Future<void> _refresh() async {
     final usageAccess = await _native.hasUsageAccess();
     final overlay = await _native.canDrawOverlays();
+    final notifications =
+        await ref.read(permissionServiceProvider).notificationStatus() ==
+        PermissionState.granted;
     final usage = usageAccess
         ? await _native.usageToday()
         : const <String, int>{};
@@ -135,6 +152,7 @@ class _AppLimitsScreenState extends ConsumerState<AppLimitsScreen> {
     setState(() {
       _usageAccess = usageAccess;
       _overlay = overlay;
+      _notifications = notifications;
       _usage = usage;
       _monitorWanted = wanted;
       _monitorRunning = running;
@@ -142,12 +160,23 @@ class _AppLimitsScreenState extends ConsumerState<AppLimitsScreen> {
   }
 
   Future<void> _toggleMonitor(bool on) async {
-    if (on && (_usageAccess != true || _overlay != true)) {
+    if (on && _usageAccess != true) {
+      showMessage(context, 'Libere o "Acesso ao uso" para ligar o monitor.');
+      return;
+    }
+    final limits = ref.read(appLimitsProvider).value ?? const <AppLimit>[];
+    if (on &&
+        _overlay != true &&
+        limits.any((l) => l.enabled && l.mode == LimitMode.overlay)) {
       showMessage(
         context,
-        'Libere as duas permissões acima para ligar o contador.',
+        'Libere "Sobrepor a outros apps" para os apps com contador flutuante.',
       );
-      return;
+    }
+    if (on &&
+        _notifications != true &&
+        limits.any((l) => l.enabled && l.mode == LimitMode.notify)) {
+      await ref.read(permissionServiceProvider).requestNotifications();
     }
     final ok = await ref
         .read(appLimitsRepositoryProvider)
@@ -182,6 +211,12 @@ class _AppLimitsScreenState extends ConsumerState<AppLimitsScreen> {
           max: 1440,
           suffix: 'min',
         ),
+        ChoiceSpec<LimitMode>(
+          'mode',
+          'Como acompanhar',
+          options: [for (final m in LimitMode.values) (m, m.label)],
+          initial: current?.mode ?? LimitMode.overlay,
+        ),
       ],
     );
     if (r == null) return;
@@ -189,11 +224,16 @@ class _AppLimitsScreenState extends ConsumerState<AppLimitsScreen> {
     if (r.deleted) {
       await repo.delete(pkg);
     } else {
+      final mode = r.choice<LimitMode>('mode');
       await repo.save(
         packageName: pkg,
         label: label,
         minutes: r.integer('min')!,
+        mode: mode,
       );
+      if (mode == LimitMode.notify && _notifications != true) {
+        await ref.read(permissionServiceProvider).requestNotifications();
+      }
     }
     await repo.applyMonitor();
     await _refresh();
@@ -252,19 +292,33 @@ class _AppLimitsScreenState extends ConsumerState<AppLimitsScreen> {
                 _permissionTile(
                   icon: Icons.picture_in_picture_alt_outlined,
                   title: 'Sobrepor a outros apps',
-                  why: 'Necessário só para o contador flutuante sobre o app monitorado.',
+                  why: 'Só para os apps no modo contador flutuante.',
                   granted: _overlay,
                   onOpen: _native.openOverlaySettings,
                 ),
+                _permissionTile(
+                  icon: Icons.notifications_none,
+                  title: 'Notificações',
+                  why: 'Só para os apps no modo notificação ao atingir o limite.',
+                  granted: _notifications,
+                  onOpen: () async {
+                    final perms = ref.read(permissionServiceProvider);
+                    final r = await perms.requestNotifications();
+                    if (r == PermissionState.blocked) {
+                      await perms.openSettings();
+                    }
+                    await _refresh();
+                  },
+                ),
                 SwitchListTile(
                   secondary: const Icon(Icons.timer_outlined),
-                  title: const Text('Contador flutuante'),
+                  title: const Text('Monitoramento ligado'),
                   subtitle: Text(
                     _monitorRunning
                         ? 'Ligado. Uma notificação fixa indica que ele está ativo.'
                         : (_monitorWanted
                               ? 'Desligado pelo Android. Toque para ligar de novo.'
-                              : 'Mostra o tempo restante enquanto você usa um app monitorado.'),
+                              : 'Acompanha os apps abaixo conforme o modo de cada um.'),
                     style: const TextStyle(
                       color: AppColors.textMuted,
                       fontSize: 13,
@@ -280,9 +334,12 @@ class _AppLimitsScreenState extends ConsumerState<AppLimitsScreen> {
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 4),
             child: Text(
-              'O app apenas acompanha e avisa o tempo restante. Nenhum app é '
-              'bloqueado. O tempo segue a contagem do próprio Android e zera à '
-              'meia-noite.',
+              'O app apenas acompanha e avisa: nenhum app é bloqueado. O tempo '
+              'segue a contagem do próprio Android e zera à meia-noite. No modo '
+              'notificação, o aviso chega uma vez por dia, enquanto você usa o '
+              'app e o monitoramento está ligado. Alguns aparelhos encerram '
+              'serviços para economizar bateria; nesse caso, abra o BrutAll '
+              'para religar.',
               style: TextStyle(color: AppColors.textFaint, fontSize: 12),
             ),
           ),
@@ -372,6 +429,15 @@ class _LimitCard extends StatelessWidget {
                   ),
                   Switch(value: limit.enabled, onChanged: onToggle),
                 ],
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Pill(
+                  limit.mode.label,
+                  icon: limit.mode == LimitMode.overlay
+                      ? Icons.picture_in_picture_alt_outlined
+                      : Icons.notifications_none,
+                ),
               ),
               ProgressBar(value: status.fraction),
               const SizedBox(height: 8),
