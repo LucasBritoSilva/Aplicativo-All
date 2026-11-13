@@ -1,7 +1,6 @@
 import 'dart:math';
 
 import 'package:aplicativo_all/features/bible/domain/bible_books.dart';
-import 'package:aplicativo_all/features/media/data/media_tables.dart';
 import 'package:aplicativo_all/features/media/domain/media_logic.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -73,17 +72,17 @@ void main() {
   });
 
   group('Filmes, séries e animes', () {
-    MediaEntry e(int id, MediaKind k, String t, bool w, double? r) =>
-        (id: id, kind: k, title: t, watched: w, rating: r);
+    MediaEntry e(int id, int k, String t, bool w, double? r) =>
+        (id: id, categoryId: k, title: t, watched: w, rating: r);
 
     final items = [
-      e(1, MediaKind.movie, 'B', true, 8),
-      e(2, MediaKind.movie, 'A', true, 9.5),
-      e(3, MediaKind.movie, 'C', true, null),
-      e(4, MediaKind.movie, 'D', false, 10),
-      e(5, MediaKind.series, 'E', false, null),
-      e(6, MediaKind.anime, 'F', false, null),
-      e(7, MediaKind.movie, 'Aa', true, 8),
+      e(1, 1, 'B', true, 8),
+      e(2, 1, 'A', true, 9.5),
+      e(3, 1, 'C', true, null),
+      e(4, 1, 'D', false, 10),
+      e(5, 2, 'E', false, null),
+      e(6, 3, 'F', false, null),
+      e(7, 1, 'Aa', true, 8),
     ];
 
     test('ranking só tem assistidos com nota, da maior para a menor', () {
@@ -94,22 +93,13 @@ void main() {
     test('sorteio só escolhe não assistidos do tipo pedido', () {
       final r = Random(1);
       for (var i = 0; i < 20; i++) {
-        final pick = drawUnwatched(
-          items,
-          (x) => x,
-          kind: MediaKind.movie,
-          random: r,
-        );
+        final pick = drawUnwatched(items, (x) => x, categoryId: 1, random: r);
         expect(pick!.id, 4);
         final any = drawUnwatched(items, (x) => x, random: r)!;
         expect(any.watched, isFalse);
       }
       expect(
-        drawUnwatched(
-          [e(1, MediaKind.anime, 'X', true, 5)],
-          (x) => x,
-          kind: MediaKind.anime,
-        ),
+        drawUnwatched([e(1, 3, 'X', true, 5)], (x) => x, categoryId: 3),
         isNull,
       );
     });

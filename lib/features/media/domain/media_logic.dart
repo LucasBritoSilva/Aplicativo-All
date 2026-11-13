@@ -1,11 +1,9 @@
 import 'dart:math';
 
-import '../data/media_tables.dart';
-
 /// Dados mínimos de um título para ranking e sorteio.
 typedef MediaEntry = ({
   int id,
-  MediaKind kind,
+  int? categoryId,
   String title,
   bool watched,
   double? rating,
@@ -28,18 +26,20 @@ List<T> rankWatched<T>(Iterable<T> items, MediaEntry Function(T) entry) {
   return list;
 }
 
-/// Sorteia um título ainda não assistido do tipo pedido (nulo = todos).
+/// Sorteia um título ainda não assistido da categoria pedida (nulo = todas).
 /// Evita repetir [avoidId] quando houver outra opção.
 T? drawUnwatched<T>(
   Iterable<T> items,
   MediaEntry Function(T) entry, {
-  MediaKind? kind,
+  int? categoryId,
   int? avoidId,
   Random? random,
 }) {
   final pool = [
     for (final i in items)
-      if (!entry(i).watched && (kind == null || entry(i).kind == kind)) i,
+      if (!entry(i).watched &&
+          (categoryId == null || entry(i).categoryId == categoryId))
+        i,
   ];
   if (pool.isEmpty) return null;
   final options = pool.length > 1 && avoidId != null
