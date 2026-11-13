@@ -1,6 +1,10 @@
 import 'package:drift/drift.dart';
 
-/// As três listas independentes do módulo.
+/// Tipo antigo dos títulos (versão 2.0.0, com três abas fixas).
+///
+/// Continua gravado em cada título só por compatibilidade: a organização
+/// agora é feita pelas categorias ([MediaCategories]). A migração usa este
+/// valor para colocar os títulos antigos na categoria certa.
 enum MediaKind {
   movie('Filme', 'Filmes'),
   series('Série', 'Séries'),
@@ -10,14 +14,34 @@ enum MediaKind {
   final String label;
   final String plural;
 
-  /// Séries e animes acompanham temporada e episódio.
   bool get hasEpisodes => this != MediaKind.movie;
 }
 
-/// Filmes, séries e animes para assistir e assistidos.
+/// Categorias do Entretenimento, criadas e organizadas pelo usuário.
+///
+/// [hasEpisodes] liga o acompanhamento de temporada e episódio para os
+/// títulos da categoria (séries, animes, novelas...).
+@DataClassName('MediaCategory')
+class MediaCategories extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text()();
+  BoolColumn get hasEpisodes => boolean().withDefault(const Constant(false))();
+  IntColumn get position => integer().withDefault(const Constant(0))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+/// Títulos para assistir e assistidos.
 class MediaItems extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get kind => textEnum<MediaKind>()();
+
+  /// Categoria do título. Excluir uma categoria pede antes para mover ou
+  /// apagar os títulos dela; o nulo só existe por segurança.
+  IntColumn get categoryId => integer().nullable().references(
+    MediaCategories,
+    #id,
+    onDelete: KeyAction.setNull,
+  )();
   TextColumn get title => text()();
   BoolColumn get watched => boolean().withDefault(const Constant(false))();
 
