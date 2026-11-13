@@ -109,13 +109,21 @@ class AppDatabase extends _$AppDatabase {
   ///
   /// Serve para telas que juntam várias tabelas (por exemplo, ocorrências,
   /// sessões e retomadas da rotina) sem perder nenhuma atualização.
+  ///
+  /// O drift reaproveita streams iguais pela consulta SQL e pelos valores,
+  /// sem olhar as tabelas observadas. Por isso a consulta leva o nome das
+  /// tabelas como valor: cada conjunto de tabelas tem o seu próprio stream.
   Stream<T> watchTables<T>(
     Set<ResultSetImplementation<dynamic, dynamic>> tables,
     Future<T> Function() load,
-  ) => customSelect(
-    'SELECT 1',
-    readsFrom: tables,
-  ).watch().asyncMap((_) => load());
+  ) {
+    final key = (tables.map((t) => t.entityName).toList()..sort()).join(',');
+    return customSelect(
+      'SELECT ? AS observed_tables',
+      variables: [Variable<String>(key)],
+      readsFrom: tables,
+    ).watch().asyncMap((_) => load());
+  }
 }
 
 /// Instância única do banco, compartilhada pelo app.
