@@ -57,7 +57,45 @@ bool activityOccursOn({
   return maskHasWeekday(weekdays, weekdayOfEpochDay(day));
 }
 
+// ---------------------------------------------------------------------
+// Horários que atravessam a meia-noite
+// ---------------------------------------------------------------------
+
+/// Minutos de um dia inteiro.
+const minutesPerDay = 1440;
+
+/// Término digitado antes (ou igual) do início é interpretado como término
+/// no dia seguinte: 23:00 até 03:00 vira 1380 até 1620 (= 03:00 + 24h).
+///
+/// Os horários de término guardados no banco seguem essa regra: acima de
+/// 1440 significa "no dia seguinte ao do início".
+int normalizeEnd(int start, int end) =>
+    end <= start ? end + minutesPerDay : end;
+
+/// A atividade termina no dia seguinte ao do início.
+bool crossesMidnight(int end) => end > minutesPerDay;
+
+/// "23:00–03:00 (dia seguinte)" ou "14:00–15:00".
+String formatSpan(int start, int end) {
+  final base =
+      '${formatMinute(start % minutesPerDay)}–'
+      '${formatMinute(end % minutesPerDay)}';
+  return crossesMidnight(end) ? '$base (dia seguinte)' : base;
+}
+
+/// Confere um intervalo de horário (término já normalizado).
+String? validateSpan(int start, int end) {
+  if (start < 0 || start >= minutesPerDay) return 'Horário de início inválido.';
+  if (end <= start) return 'O início e o término não podem ser iguais.';
+  if (end - start >= minutesPerDay) {
+    return 'A atividade precisa durar menos de 24 horas.';
+  }
+  return null;
+}
+
 /// Confere os dados de uma atividade. Devolve a mensagem de erro, ou nulo.
+///
+/// [endMinute] já vem normalizado: pode passar de 1440 (dia seguinte).
 String? validateActivity({
   required String name,
   required int startMinute,
@@ -66,9 +104,8 @@ String? validateActivity({
   required int? singleDay,
 }) {
   if (name.trim().isEmpty) return 'Dê um nome para a atividade.';
-  if (endMinute <= startMinute) {
-    return 'O horário de término precisa ser depois do início.';
-  }
+  final error = validateSpan(startMinute, endMinute);
+  if (error != null) return error;
   if (singleDay == null && weekdays == 0) {
     return 'Escolha pelo menos um dia da semana.';
   }
@@ -227,7 +264,7 @@ int remainingSeconds(int planned, int done) =>
 // Conflitos de horário
 // ---------------------------------------------------------------------
 
-/// Um bloco de tempo ocupado em um dia.
+/// Um bloco de tempo ocupado. [end] pode passar de 1440 (dia seguinte).
 class TimeBlock {
   const TimeBlock({
     required this.id,
@@ -245,9 +282,14 @@ class TimeBlock {
   final int day;
   final int start;
   final int end;
+
+  int get absoluteStart => day * minutesPerDay + start;
+  int get absoluteEnd => day * minutesPerDay + end;
 }
 
-/// Blocos que se sobrepõem ao intervalo [start, end) no dia [day].
+/// Blocos que se sobrepõem ao intervalo [start, end) que começa no dia
+/// [day]. A comparação usa minutos absolutos, então um bloco das 23h às 3h
+/// de segunda conflita com outro às 2h de terça.
 ///
 /// Encostar não é conflito (um termina às 15h e outro começa às 15h).
 /// [ignoreId] tira da conta a própria ocorrência que está sendo movida.
@@ -258,17 +300,19 @@ List<TimeBlock> findConflicts({
   required Iterable<TimeBlock> blocks,
   int? ignoreId,
 }) {
+  final from = day * minutesPerDay + start;
+  final to = day * minutesPerDay + end;
   final found = [
     for (final b in blocks)
-      if (b.id != ignoreId && b.day == day && b.start < end && start < b.end) b,
+      if (b.id != ignoreId && b.absoluteStart < to && from < b.absoluteEnd) b,
   ];
-  found.sort((a, b) => a.start.compareTo(b.start));
+  found.sort((a, b) => a.absoluteStart.compareTo(b.absoluteStart));
   return found;
 }
 
 /// Frase para avisar um conflito.
 String describeConflict(TimeBlock block) {
-  final time = '${formatMinute(block.start)}–${formatMinute(block.end)}';
+  final time = formatSpan(block.start, block.end);
   final kind = block.kind == ActivityKind.fixed ? ' (compromisso fixo)' : '';
   return '${block.name}, $time$kind';
 }
@@ -489,13 +533,31 @@ bool plansOverlap({
   required int weekdaysB,
   required int? singleDayB,
 }) {
-  if (!(startA < endB && startB < endA)) return false;
-  if (singleDayA != null && singleDayB != null) return singleDayA == singleDayB;
+  // Dias em que cada planejamento acontece, numa janela que cobre a virada
+  // de domingo para segunda e a véspera e o dia seguinte de uma data única.
+  final List<int> window;
   if (singleDayA != null) {
-    return maskHasWeekday(weekdaysB, weekdayOfEpochDay(singleDayA));
+    window = [singleDayA - 1, singleDayA, singleDayA + 1];
+  } else if (singleDayB != null) {
+    window = [singleDayB - 1, singleDayB, singleDayB + 1];
+  } else {
+    // Três semanas a partir de uma segunda-feira (dia 4 = 05/01/1970).
+    window = [for (var d = 4; d < 25; d++) d];
   }
-  if (singleDayB != null) {
-    return maskHasWeekday(weekdaysA, weekdayOfEpochDay(singleDayB));
+  List<int> days(int mask, int? single) => single != null
+      ? [single]
+      : [
+          for (final d in window)
+            if (maskHasWeekday(mask, weekdayOfEpochDay(d))) d,
+        ];
+  for (final da in days(weekdaysA, singleDayA)) {
+    final fromA = da * minutesPerDay + startA;
+    final toA = da * minutesPerDay + endA;
+    for (final db in days(weekdaysB, singleDayB)) {
+      final fromB = db * minutesPerDay + startB;
+      final toB = db * minutesPerDay + endB;
+      if (fromA < toB && fromB < toA) return true;
+    }
   }
-  return weekdaysA & weekdaysB != 0;
+  return false;
 }
